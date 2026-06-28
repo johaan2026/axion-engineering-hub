@@ -7,15 +7,15 @@ export function init() {
 
   grid.innerHTML = CALCULATORS.map(
     (calc) => `
-      <article class="card" id="${calc.slug}" aria-labelledby="calc-${calc.id}-title">
+      <a class="card card--link" id="${calc.slug}" href="${calc.id === "gear-ratio" ? "calculators/gear-ratio.html" : "#"}" aria-labelledby="calc-${calc.id}-title">
         <div class="card__icon">${getIcon(calc.icon)}</div>
         <h2 class="card__title" id="calc-${calc.id}-title">${calc.name}</h2>
         <p class="card__text">${calc.description}</p>
         <p class="card__meta">${calc.category}</p>
         <p style="margin-top: 1rem;">
-          <span class="badge badge--soon">Phase 3</span>
+          <span class="badge badge--${calc.id === "gear-ratio" ? "accent" : "soon"}">${calc.id === "gear-ratio" ? "Available" : "Phase 3"}</span>
         </p>
-      </article>
+      </a>
     `
   ).join("");
 }

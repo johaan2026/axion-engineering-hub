@@ -7,6 +7,7 @@ const pageRouter = createPageRouter({
   home: { id: "home" },
   dashboard: { id: "dashboard" },
   calculators: { id: "calculators" },
+  "gear-ratio": { id: "gear-ratio" },
   formulas: { id: "formulas" },
   materials: { id: "materials" },
   about: { id: "about" },

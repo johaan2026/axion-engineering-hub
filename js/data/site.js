@@ -2,8 +2,15 @@
  * Shared path resolution for MPA pages at root vs pages/.
  */
 export function getBasePath() {
-  const inPages = window.location.pathname.includes("/pages/");
-  return inPages ? ".." : ".";
+  const segments = window.location.pathname.split("/").filter(Boolean);
+  const pagesIndex = segments.indexOf("pages");
+
+  if (pagesIndex === -1) {
+    return ".";
+  }
+
+  const depthBelowPages = segments.length - pagesIndex - 1;
+  return depthBelowPages > 0 ? "../".repeat(depthBelowPages) : "..";
 }
 
 export function resolvePath(relativePath) {
