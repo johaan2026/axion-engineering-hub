@@ -310,7 +310,6 @@ function renderGearSvg(result) {
   if (animationFrame) {
     window.cancelAnimationFrame(animationFrame);
   }
-  animationPhase = 0;
   animationStartTime = null;
   window.requestAnimationFrame(animateGearsTimestamp);
 }
@@ -495,6 +494,76 @@ function renderEngineeringWarnings(values, result) {
   `).join('');
 }
 
+function getEngineeringNotes(values, result) {
+  const warnings = [];
+  if (Number(values.efficiency) < 90) {
+    warnings.push('⚠ Efficiency below recommended value.');
+  }
+  if (result.gearRatio > 6) {
+    warnings.push('⚠ High gear ratio may require multi-stage gearing.');
+  }
+  if (Number(values.driverTeeth) < 6 || Number(values.drivenTeeth) < 6 || Number(values.driverSpeed) <= 0 || Number(values.driverTorque) <= 0) {
+    warnings.push('⚠ Invalid input values detected. Ensure all fields are positive and within the allowed range.');
+  }
+  if (warnings.length === 0) {
+    warnings.push('✓ All parameters are within recommended limits.');
+  }
+  return warnings;
+}
+
+async function exportPdf() {
+  if (!lastResult) {
+    warning("Calculate a result before exporting.");
+    return;
+  }
+
+  const values = getFormValues();
+  const notes = getEngineeringNotes(values, lastResult);
+  const generatedAt = new Date();
+  const payload = {
+    title: "Gear Ratio Calculation Report",
+    generatedAt,
+    calculatorVersion: "1.0",
+    inputs: [
+      { label: "Driver Gear Teeth", value: values.driverTeeth },
+      { label: "Driven Gear Teeth", value: values.drivenTeeth },
+      { label: "Driver Speed (RPM)", value: `${values.driverSpeed} rpm` },
+      { label: "Driver Torque (Nm)", value: `${values.driverTorque} Nm` },
+      { label: "Gear Efficiency (%)", value: `${values.efficiency}%` },
+      { label: "Pressure Angle (°)", value: `${values.pressureAngle}°` },
+    ],
+    results: [
+      { label: "Gear Ratio", value: `${lastResult.gearRatio.toFixed(3)}:1` },
+      { label: "Output RPM", value: `${lastResult.outputRpm.toFixed(2)} rpm` },
+      { label: "Output Torque", value: `${lastResult.outputTorque.toFixed(2)} Nm` },
+      { label: "Mechanical Advantage", value: lastResult.mechanicalAdvantage.toFixed(3) },
+      { label: "Input Power", value: `${lastResult.inputPower.toFixed(2)} W` },
+      { label: "Output Power", value: `${lastResult.outputPower.toFixed(2)} W` },
+      { label: "Angular Velocity", value: `${lastResult.inputAngularVelocity.toFixed(2)} rad/s` },
+      { label: "Rotation Direction", value: lastResult.direction },
+    ],
+    formulas: [
+      { title: "Gear Ratio", equation: "i = Ndriven / Ndriver" },
+      { title: "Output RPM", equation: "RPMout = RPMin / i" },
+      { title: "Output Torque", equation: "Tout = Tin × i × η" },
+      { title: "Mechanical Advantage", equation: "MA = Tout / Tin" },
+      { title: "Power", equation: "P = τω" },
+    ],
+    assumptions: [
+      "External spur gears",
+      "Constant pressure angle",
+      "Ideal involute teeth",
+      "Efficiency applied only to transmitted power",
+    ],
+    notes,
+  };
+
+  const filename = `gear-ratio-report-${generatedAt.toISOString().slice(0, 10)}.pdf`;
+  const exported = await exporter.exportPdf(payload, { filename });
+  downloadFile(exported.content, exported.filename, "application/pdf");
+  success("PDF export created.");
+}
+
 function saveCalculation() {
   if (!lastResult) {
     warning("Calculate a result before saving.");
@@ -559,20 +628,6 @@ async function exportCsv() {
   const exported = await exporter.exportCsv(csv, { filename: "gear-ratio-results.csv" });
   downloadFile(exported.content, exported.filename, "text/csv;charset=utf-8");
   success("CSV export created.");
-}
-
-async function exportPdf() {
-  if (!lastResult) {
-    warning("Calculate a result before exporting.");
-    return;
-  }
-
-  const values = getFormValues();
-  const payload = `Gear Ratio Calculator\n\nInputs:\nDriver Teeth: ${values.driverTeeth}\nDriven Teeth: ${values.drivenTeeth}\nDriver Speed: ${values.driverSpeed} rpm\nDriver Torque: ${values.driverTorque} Nm\nEfficiency: ${values.efficiency}%\nPressure Angle: ${values.pressureAngle}°\n\nResults:\nGear Ratio: ${lastResult.gearRatio.toFixed(3)}\nOutput RPM: ${lastResult.outputRpm.toFixed(2)} rpm\nOutput Torque: ${lastResult.outputTorque.toFixed(2)} Nm\nMechanical Advantage: ${lastResult.mechanicalAdvantage.toFixed(3)}\nInput Power: ${lastResult.inputPower.toFixed(2)} W\nOutput Power: ${lastResult.outputPower.toFixed(2)} W\nAngular Velocity: ${lastResult.inputAngularVelocity.toFixed(2)} rad/s\nRotation Direction: ${lastResult.direction}`;
-
-  const exported = await exporter.exportPdf(payload, { filename: "gear-ratio-results.pdf" });
-  downloadFile(exported.content, exported.filename, "application/pdf");
-  success("PDF export prepared.");
 }
 
 function initFavouriteState() {
