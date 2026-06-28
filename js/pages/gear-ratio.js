@@ -1,7 +1,9 @@
 import { validateForm } from "../framework/validation.js";
-import { notify, success, error, warning } from "../framework/notifications.js";
+import { success, error, warning } from "../framework/notifications.js";
 import { addCalculationHistory, toggleFavouriteCalculator, getFavouriteCalculators, recordRecentCalculator } from "../framework/storage.js";
 import { ExportService } from "../framework/exporters.js";
+import { createResultCard as createFrameworkResultCard } from "../framework/results.js";
+import { copyToClipboard, downloadFile } from "../framework/utilities.js";
 import { getCalculatorById } from "../data/calculators.js";
 
 const exporter = new ExportService();
@@ -49,7 +51,6 @@ const fieldErrorMap = {
 
 let lastResult = null;
 let animationFrame = null;
-let animationPhase = 0;
 let lastAnimationState = null;
 let animationStartTime = null;
 let liveCalculationFrame = null;
@@ -83,19 +84,27 @@ function showFieldErrors(results) {
   });
 }
 
-function createResultCard(title, value, unit, description) {
+function createMetricCard(title, value, unit, description) {
+  const descriptionElement = document.createElement("p");
+  descriptionElement.className = "result-card__meta";
+  descriptionElement.textContent = description;
+  const card = createFrameworkResultCard({
+    title,
+    value,
+    meta: unit,
+    tone: "success",
+    icon: "",
+    children: descriptionElement,
+  });
+  card.setAttribute("role", "listitem");
+
   const numericValue = Number.parseFloat(value);
-  const countAttribute = Number.isFinite(numericValue) && String(value).trim() !== ""
-    ? ` data-count-to="${numericValue}" data-count-decimals="${String(value).split(".")[1]?.length ?? 0}"`
-    : "";
-  return `
-    <article class="result-card result-card--success" role="listitem">
-      <h3 class="result-card__title">${title}</h3>
-      <p class="result-card__value"${countAttribute}>${value}</p>
-      <p class="result-card__meta">${unit}</p>
-      <p class="result-card__meta">${description}</p>
-    </article>
-  `;
+  if (Number.isFinite(numericValue) && String(value).trim() !== "") {
+    const valueElement = card.querySelector(".result-card__value");
+    valueElement.dataset.countTo = String(numericValue);
+    valueElement.dataset.countDecimals = String(String(value).split(".")[1]?.length ?? 0);
+  }
+  return card;
 }
 
 function renderFormulas() {
@@ -168,35 +177,45 @@ function calculate(values) {
 
 function updateResults(result) {
   lastResult = result;
-  // Group results into sections: Primary, Performance, Motion
-  resultsGrid.innerHTML = `
-    <div class="result-section">
-      <h4 class="result-section__title">Primary Results</h4>
-      <div class="result-grid">
-        ${createResultCard("Gear Ratio", result.gearRatio.toFixed(3), "i", "Driven teeth ÷ driver teeth.")}
-        ${createResultCard("Output RPM", result.outputRpm.toFixed(2), "rpm", "Driven shaft rotational speed.")}
-        ${createResultCard("Output Torque", result.outputTorque.toFixed(2), "Nm", "Torque delivered to the driven shaft.")}
-      </div>
-    </div>
+  const sections = [
+    {
+      title: "Primary Results",
+      cards: [
+        ["Gear Ratio", result.gearRatio.toFixed(3), "i", "Driven teeth ÷ driver teeth."],
+        ["Output RPM", result.outputRpm.toFixed(2), "rpm", "Driven shaft rotational speed."],
+        ["Output Torque", result.outputTorque.toFixed(2), "Nm", "Torque delivered to the driven shaft."],
+      ],
+    },
+    {
+      title: "Performance",
+      cards: [
+        ["Mechanical Advantage", result.mechanicalAdvantage.toFixed(3), "-", "Torque multiplication ratio."],
+        ["Input Power", result.inputPower.toFixed(2), "W", "Power supplied to the driver shaft."],
+        ["Output Power", result.outputPower.toFixed(2), "W", "Useful power at the driven shaft."],
+      ],
+    },
+    {
+      title: "Motion",
+      cards: [
+        ["Angular Velocity", result.inputAngularVelocity.toFixed(2), "rad/s", "Driver shaft angular velocity."],
+        ["Rotation Direction", result.direction, "-", "External spur gears rotate oppositely."],
+        ["Gear Mesh Type", "External Spur", "-", `${result.pressureAngle.toFixed(1)}° pressure angle`],
+      ],
+    },
+  ];
 
-    <div class="result-section" style="margin-top:var(--space-md)">
-      <h4 class="result-section__title">Performance</h4>
-      <div class="result-grid">
-        ${createResultCard("Mechanical Advantage", result.mechanicalAdvantage.toFixed(3), "-", "Torque multiplication ratio.")}
-        ${createResultCard("Input Power", result.inputPower.toFixed(2), "W", "Power supplied to the driver shaft.")}
-        ${createResultCard("Output Power", result.outputPower.toFixed(2), "W", "Useful power at the driven shaft.")}
-      </div>
-    </div>
-
-    <div class="result-section" style="margin-top:var(--space-md)">
-      <h4 class="result-section__title">Motion</h4>
-      <div class="result-grid">
-        ${createResultCard("Angular Velocity", result.inputAngularVelocity.toFixed(2), "rad/s", "Driver shaft angular velocity.")}
-        ${createResultCard("Rotation Direction", result.direction, "-", "External spur gears rotate oppositely.")}
-        ${createResultCard("Gear Mesh Type", "External Spur", "-", `${result.pressureAngle.toFixed(1)}° pressure angle`) }
-      </div>
-    </div>
-  `;
+  resultsGrid.replaceChildren(...sections.map(({ title, cards }) => {
+    const section = document.createElement("div");
+    section.className = "result-section";
+    const heading = document.createElement("h4");
+    heading.className = "result-section__title";
+    heading.textContent = title;
+    const grid = document.createElement("div");
+    grid.className = "result-grid";
+    grid.append(...cards.map((card) => createMetricCard(...card)));
+    section.append(heading, grid);
+    return section;
+  }));
   animateResultValues();
 
   metricRatio.textContent = `${result.gearRatio.toFixed(2)}:1`;
@@ -429,12 +448,13 @@ function copyResults() {
     `Rotation Direction: ${lastResult.direction}`,
   ].join("\n");
 
-  navigator.clipboard.writeText(payload).then(() => success("Results copied to clipboard."));
+  copyToClipboard(payload)
+    .then(() => success("Results copied to clipboard."))
+    .catch(() => error("Clipboard access is unavailable in this browser."));
 }
 
 function renderWorkedExample(values, result) {
   const given = `Driver teeth = ${values.driverTeeth}, driven teeth = ${values.drivenTeeth}, driver speed = ${values.driverSpeed} rpm, driver torque = ${values.driverTorque} Nm, efficiency = ${values.efficiency}%`;
-  const formula = `i = N\u2092driven / N\u2092driver`; // placeholder - display handled in HTML
   const substitution = `i = ${values.drivenTeeth} / ${values.driverTeeth} = ${result.gearRatio.toFixed(3)} and T_out = ${values.driverTorque} × ${result.gearRatio.toFixed(3)} × ${ (values.efficiency/100).toFixed(3) } = ${result.outputTorque.toFixed(2)} Nm`;
   const answer = `Output RPM = ${result.outputRpm.toFixed(2)} rpm; Output Torque ≈ ${result.outputTorque.toFixed(2)} Nm.`;
 
@@ -490,8 +510,7 @@ function saveCalculation() {
   };
 
   addCalculationHistory(entry);
-  // update recent list for dashboard
-  try { recordRecentCalculator({ id: calculatorDefinition.id, label: calculatorDefinition.name, lastUsed: new Date().toISOString() }); } catch {}
+  recordRecentCalculator({ id: calculatorDefinition.id, label: calculatorDefinition.name });
   success("Calculation saved to history.");
 }
 
@@ -509,10 +528,10 @@ function toggleFavourite() {
 }
 
 function printResults() {
-  window.print();
+  exporter.exportPrint(lastResult, { window });
 }
 
-function exportCsv() {
+async function exportCsv() {
   if (!lastResult) {
     warning("Calculate a result before exporting.");
     return;
@@ -537,15 +556,12 @@ function exportCsv() {
     ["pressureAngle", values.pressureAngle],
   ];
   const csv = data.map((row) => row.join(",")).join("\n");
-  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
-  const link = document.createElement("a");
-  link.href = URL.createObjectURL(blob);
-  link.download = "gear-ratio-results.csv";
-  link.click();
+  const exported = await exporter.exportCsv(csv, { filename: "gear-ratio-results.csv" });
+  downloadFile(exported.content, exported.filename, "text/csv;charset=utf-8");
   success("CSV export created.");
 }
 
-function exportPdf() {
+async function exportPdf() {
   if (!lastResult) {
     warning("Calculate a result before exporting.");
     return;
@@ -554,7 +570,9 @@ function exportPdf() {
   const values = getFormValues();
   const payload = `Gear Ratio Calculator\n\nInputs:\nDriver Teeth: ${values.driverTeeth}\nDriven Teeth: ${values.drivenTeeth}\nDriver Speed: ${values.driverSpeed} rpm\nDriver Torque: ${values.driverTorque} Nm\nEfficiency: ${values.efficiency}%\nPressure Angle: ${values.pressureAngle}°\n\nResults:\nGear Ratio: ${lastResult.gearRatio.toFixed(3)}\nOutput RPM: ${lastResult.outputRpm.toFixed(2)} rpm\nOutput Torque: ${lastResult.outputTorque.toFixed(2)} Nm\nMechanical Advantage: ${lastResult.mechanicalAdvantage.toFixed(3)}\nInput Power: ${lastResult.inputPower.toFixed(2)} W\nOutput Power: ${lastResult.outputPower.toFixed(2)} W\nAngular Velocity: ${lastResult.inputAngularVelocity.toFixed(2)} rad/s\nRotation Direction: ${lastResult.direction}`;
 
-  exporter.exportPdf(payload, { filename: "gear-ratio-results.pdf" }).then(() => success("PDF export prepared."));
+  const exported = await exporter.exportPdf(payload, { filename: "gear-ratio-results.pdf" });
+  downloadFile(exported.content, exported.filename, "application/pdf");
+  success("PDF export prepared.");
 }
 
 function initFavouriteState() {
@@ -616,10 +634,4 @@ export function init() {
   if (form) {
     updateResults(calculate(getFormValues()));
   }
-}
-
-if (document.readyState === "loading") {
-  document.addEventListener("DOMContentLoaded", init, { once: true });
-} else {
-  init();
 }
