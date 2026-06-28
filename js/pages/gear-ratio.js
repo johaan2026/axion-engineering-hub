@@ -1,6 +1,6 @@
 import { validateForm } from "../framework/validation.js";
 import { notify, success, error, warning } from "../framework/notifications.js";
-import { addCalculationHistory, toggleFavouriteCalculator, getFavouriteCalculators } from "../framework/storage.js";
+import { addCalculationHistory, toggleFavouriteCalculator, getFavouriteCalculators, recordRecentCalculator } from "../framework/storage.js";
 import { ExportService } from "../framework/exporters.js";
 import { getCalculatorById } from "../data/calculators.js";
 
@@ -51,6 +51,7 @@ let lastResult = null;
 let animationFrame = null;
 let animationPhase = 0;
 let lastAnimationState = null;
+let animationStartTime = null;
 
 function getFormValues() {
   return {
@@ -81,11 +82,14 @@ function showFieldErrors(results) {
 }
 
 function createResultCard(title, value, unit, description) {
+  const numericValue = Number.parseFloat(value);
+  const countAttribute = Number.isFinite(numericValue) && String(value).trim() !== ""
+    ? ` data-count-to="${numericValue}" data-count-decimals="${String(value).split(".")[1]?.length ?? 0}"`
+    : "";
   return `
     <article class="result-card result-card--success" role="listitem">
-      <div class="result-card__icon">⚙️</div>
       <h3 class="result-card__title">${title}</h3>
-      <p class="result-card__value">${value}</p>
+      <p class="result-card__value"${countAttribute}>${value}</p>
       <p class="result-card__meta">${unit}</p>
       <p class="result-card__meta">${description}</p>
     </article>
@@ -96,27 +100,27 @@ function renderFormulas() {
   formulaList.innerHTML = `
     <div class="formula-card">
       <div class="formula-card__title">Gear Ratio</div>
-      <div class="formula-card__body">$i = N_{driven} / N_{driver}$</div>
+      <div class="formula-card__body">i = N<sub>driven</sub> / N<sub>driver</sub></div>
     </div>
     <div class="formula-card">
       <div class="formula-card__title">Output RPM</div>
-      <div class="formula-card__body">$RPM_{out} = RPM_{in} / i$</div>
+      <div class="formula-card__body">RPM<sub>out</sub> = RPM<sub>in</sub> / i</div>
     </div>
     <div class="formula-card">
       <div class="formula-card__title">Output Torque</div>
-      <div class="formula-card__body">$T_{out} = T_{in} \times i \times \eta$</div>
+      <div class="formula-card__body">T<sub>out</sub> = T<sub>in</sub> × i × η</div>
     </div>
     <div class="formula-card">
       <div class="formula-card__title">Mechanical Advantage</div>
-      <div class="formula-card__body">$MA = T_{out} / T_{in}$</div>
+      <div class="formula-card__body">MA = T<sub>out</sub> / T<sub>in</sub></div>
     </div>
     <div class="formula-card">
       <div class="formula-card__title">Angular Velocity</div>
-      <div class="formula-card__body">$\omega = 2\pi \times RPM / 60$</div>
+      <div class="formula-card__body">ω = 2π × RPM / 60</div>
     </div>
     <div class="formula-card">
       <div class="formula-card__title">Power</div>
-      <div class="formula-card__body">$P_{in} = \tau \omega$ and $P_{out} = P_{in} \times \eta$</div>
+      <div class="formula-card__body">P<sub>in</sub> = τ ω &nbsp;&nbsp; P<sub>out</sub> = P<sub>in</sub> × η</div>
     </div>
   `;
 }
@@ -162,34 +166,74 @@ function calculate(values) {
 
 function updateResults(result) {
   lastResult = result;
+  // Group results into sections: Primary, Performance, Motion
+  resultsGrid.innerHTML = `
+    <div class="result-section">
+      <h4 class="result-section__title">Primary Results</h4>
+      <div class="result-grid">
+        ${createResultCard("Gear Ratio", result.gearRatio.toFixed(3), "i", "Driven teeth ÷ driver teeth.")}
+        ${createResultCard("Output RPM", result.outputRpm.toFixed(2), "rpm", "Driven shaft rotational speed.")}
+        ${createResultCard("Output Torque", result.outputTorque.toFixed(2), "Nm", "Torque delivered to the driven shaft.")}
+      </div>
+    </div>
 
-  resultsGrid.innerHTML = [
-    createResultCard("Gear Ratio", result.gearRatio.toFixed(3), "-", "Driven teeth ÷ driver teeth."),
-    createResultCard("Output RPM", result.outputRpm.toFixed(2), "rpm", "Driven shaft rotational speed."),
-    createResultCard("Output Torque", result.outputTorque.toFixed(2), "Nm", "Torque delivered to the driven shaft."),
-    createResultCard("Mechanical Advantage", result.mechanicalAdvantage.toFixed(3), "-", "Torque multiplication ratio."),
-    createResultCard("Input Power", result.inputPower.toFixed(2), "W", "Power supplied to the driver shaft."),
-    createResultCard("Output Power", result.outputPower.toFixed(2), "W", "Useful power at the driven shaft."),
-    createResultCard("Angular Velocity", result.inputAngularVelocity.toFixed(2), "rad/s", "Driver shaft angular velocity."),
-    createResultCard("Rotation Direction", result.direction, "-", "External spur gears rotate oppositely."),
-  ].join("");
+    <div class="result-section" style="margin-top:var(--space-md)">
+      <h4 class="result-section__title">Performance</h4>
+      <div class="result-grid">
+        ${createResultCard("Mechanical Advantage", result.mechanicalAdvantage.toFixed(3), "-", "Torque multiplication ratio.")}
+        ${createResultCard("Input Power", result.inputPower.toFixed(2), "W", "Power supplied to the driver shaft.")}
+        ${createResultCard("Output Power", result.outputPower.toFixed(2), "W", "Useful power at the driven shaft.")}
+      </div>
+    </div>
+
+    <div class="result-section" style="margin-top:var(--space-md)">
+      <h4 class="result-section__title">Motion</h4>
+      <div class="result-grid">
+        ${createResultCard("Angular Velocity", result.inputAngularVelocity.toFixed(2), "rad/s", "Driver shaft angular velocity.")}
+        ${createResultCard("Rotation Direction", result.direction, "-", "External spur gears rotate oppositely.")}
+        ${createResultCard("Gear Mesh Type", "External Spur", "-", `${result.pressureAngle.toFixed(1)}° pressure angle`) }
+      </div>
+    </div>
+  `;
+  animateResultValues();
 
   metricRatio.textContent = `${result.gearRatio.toFixed(2)}:1`;
   metricInputRpm.textContent = `${result.driverSpeed.toFixed(0)} rpm`;
   metricOutputRpm.textContent = `${result.outputRpm.toFixed(0)} rpm`;
   metricDirection.textContent = result.direction;
+  const gearMesh = document.getElementById('metric-gear-mesh');
+  if (gearMesh) gearMesh.textContent = 'External Spur';
 
   status.textContent = `Loaded: ${result.driverTeeth} tooth driver driving a ${result.drivenTeeth} tooth gear.`;
-  renderAnimation(result);
+  renderGearSvg(result);
+  // update worked example and warnings
+  renderWorkedExample(getFormValues(), result);
+  renderEngineeringWarnings(getFormValues(), result);
 }
 
-function renderAnimation(result) {
+function animateResultValues() {
+  if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+  resultsGrid.querySelectorAll("[data-count-to]").forEach((element) => {
+    const target = Number(element.dataset.countTo);
+    const decimals = Number(element.dataset.countDecimals);
+    const start = performance.now();
+    const tick = (now) => {
+      const progress = Math.min((now - start) / 520, 1);
+      element.textContent = (target * (1 - Math.pow(1 - progress, 3))).toFixed(decimals);
+      if (progress < 1) window.requestAnimationFrame(tick);
+    };
+    window.requestAnimationFrame(tick);
+  });
+}
+
+function renderGearSvg(result) {
   if (!svg) return;
 
-  const driverRadius = 48 + (result.driverTeeth / 500) * 18;
-  const drivenRadius = 48 + (result.drivenTeeth / 500) * 18;
-  const speedRatio = result.outputRpm / result.driverSpeed;
-  const animationSpeed = Math.max(0.2, Math.min(2.5, 1 / Math.max(speedRatio, 0.2)));
+  // radii scale roughly with tooth count (proportional)
+  const minRadius = 36;
+  const driverRadius = Math.max(minRadius, Math.round((result.driverTeeth / Math.max(result.driverTeeth, result.drivenTeeth)) * 72));
+  const drivenRadius = Math.max(minRadius, Math.round((result.drivenTeeth / Math.max(result.driverTeeth, result.drivenTeeth)) * 72));
+
   const driverTeeth = result.driverTeeth;
   const drivenTeeth = result.drivenTeeth;
 
@@ -200,55 +244,75 @@ function renderAnimation(result) {
         <stop offset="100%" stop-color="#1d4ed8"></stop>
       </linearGradient>
     </defs>
-    <line x1="160" y1="60" x2="160" y2="160" stroke="rgba(255,255,255,0.15)" stroke-width="2"></line>
-    <circle cx="100" cy="120" r="${driverRadius}" fill="rgba(255,255,255,0.06)" stroke="#60a5fa" stroke-width="3"></circle>
-    <circle cx="220" cy="120" r="${drivenRadius}" fill="rgba(255,255,255,0.06)" stroke="#93c5fd" stroke-width="3"></circle>
-    <g id="driver-gear" transform="translate(100,120)">
-      <circle r="${driverRadius - 8}" fill="url(#gear-gradient)"></circle>
-      <circle r="${driverRadius - 16}" fill="none" stroke="rgba(255,255,255,0.25)" stroke-width="2"></circle>
-      ${Array.from({ length: Math.max(8, Math.round(driverTeeth / 10)) }, (_, index) => {
-        const angle = (index / (Math.max(8, Math.round(driverTeeth / 10)))) * Math.PI * 2;
-        const outerRadius = driverRadius - 4;
-        const innerRadius = driverRadius - 16;
-        return `<rect x="${Math.cos(angle) * innerRadius - 3}" y="${Math.sin(angle) * innerRadius - 3}" width="6" height="${outerRadius - innerRadius + 6}" rx="2" transform="rotate(${angle * (180 / Math.PI)} ${Math.cos(angle) * innerRadius} ${Math.sin(angle) * innerRadius})"></rect>`;
-      }).join("")}
+    <g id="gear-scene">
+      <line x1="160" y1="40" x2="160" y2="180" stroke="rgba(255,255,255,0.06)" stroke-width="1"></line>
+      <g id="driver-gear" transform="translate(100,110)">
+        <circle r="${driverRadius}" fill="rgba(255,255,255,0.03)" stroke="#60a5fa" stroke-width="2"></circle>
+        <g id="driver-teeth-group">
+          ${Array.from({ length: Math.max(8, driverTeeth) }, (_, index) => {
+            const teethCount = Math.max(8, driverTeeth);
+            const angle = (index / teethCount) * Math.PI * 2;
+            const outer = driverRadius + 4;
+            const inner = driverRadius - 8;
+            return `<rect x="${Math.cos(angle) * inner - 2}" y="${Math.sin(angle) * inner - 6}" width="4" height="${outer - inner + 8}" rx="1" transform="rotate(${(angle * 180 / Math.PI)} ${Math.cos(angle) * inner} ${Math.sin(angle) * inner})" fill="#93c5fd"></rect>`;
+          }).join('')}
+        </g>
+      </g>
+
+      <g id="driven-gear" transform="translate(220,110)">
+        <circle r="${drivenRadius}" fill="rgba(255,255,255,0.03)" stroke="#93c5fd" stroke-width="2"></circle>
+        <g id="driven-teeth-group">
+          ${Array.from({ length: Math.max(8, drivenTeeth) }, (_, index) => {
+            const teethCount = Math.max(8, drivenTeeth);
+            const angle = (index / teethCount) * Math.PI * 2;
+            const outer = drivenRadius + 4;
+            const inner = drivenRadius - 8;
+            return `<rect x="${Math.cos(angle) * inner - 2}" y="${Math.sin(angle) * inner - 6}" width="4" height="${outer - inner + 8}" rx="1" transform="rotate(${(angle * 180 / Math.PI)} ${Math.cos(angle) * inner} ${Math.sin(angle) * inner})" fill="#60a5fa"></rect>`;
+          }).join('')}
+        </g>
+      </g>
+
+      <text x="100" y="30" text-anchor="middle" fill="#cbd5e1" font-size="12">Driver Gear</text>
+      <text x="220" y="30" text-anchor="middle" fill="#cbd5e1" font-size="12">Driven Gear</text>
+      <text x="100" y="140" text-anchor="middle" fill="#e6eef8" font-size="11">Teeth: ${driverTeeth}</text>
+      <text x="220" y="140" text-anchor="middle" fill="#e6eef8" font-size="11">Teeth: ${drivenTeeth}</text>
     </g>
-    <g id="driven-gear" transform="translate(220,120)">
-      <circle r="${drivenRadius - 8}" fill="url(#gear-gradient)"></circle>
-      <circle r="${drivenRadius - 16}" fill="none" stroke="rgba(255,255,255,0.25)" stroke-width="2"></circle>
-      ${Array.from({ length: Math.max(8, Math.round(drivenTeeth / 10)) }, (_, index) => {
-        const angle = (index / (Math.max(8, Math.round(drivenTeeth / 10)))) * Math.PI * 2;
-        const outerRadius = drivenRadius - 4;
-        const innerRadius = drivenRadius - 16;
-        return `<rect x="${Math.cos(angle) * innerRadius - 3}" y="${Math.sin(angle) * innerRadius - 3}" width="6" height="${outerRadius - innerRadius + 6}" rx="2" transform="rotate(${angle * (180 / Math.PI)} ${Math.cos(angle) * innerRadius} ${Math.sin(angle) * innerRadius})"></rect>`;
-      }).join("")}
-    </g>
-    <text x="160" y="195" text-anchor="middle" fill="#f8fafc" font-size="13">Driver and driven gears rotate in opposite directions.</text>
+    <text x="160" y="200" text-anchor="middle" fill="#f8fafc" font-size="12">Driver and driven gears rotate in opposite directions.</text>
   `;
 
-  lastAnimationState = { result, animationSpeed, driverRadius, drivenRadius };
+  // Prepare continuous animation based on RPM values
+  lastAnimationState = {
+    driverDegPerSec: result.driverSpeed * 6, // RPM -> deg/s
+    drivenDegPerSec: result.outputRpm * 6,
+  };
+
   if (animationFrame) {
     window.cancelAnimationFrame(animationFrame);
   }
   animationPhase = 0;
-  animateGears();
+  animationStartTime = null;
+  window.requestAnimationFrame(animateGearsTimestamp);
 }
 
-function animateGears() {
+function animateGearsTimestamp(ts) {
   if (!lastAnimationState || !svg) return;
-  const { result, animationSpeed } = lastAnimationState;
-  const driverGear = svg.querySelector("#driver-gear");
-  const drivenGear = svg.querySelector("#driven-gear");
+  if (!animationStartTime) animationStartTime = ts;
+  const elapsed = (ts - animationStartTime) / 1000; // seconds
 
-  if (driverGear) {
-    driverGear.setAttribute("transform", `translate(100,120) rotate(${animationPhase * animationSpeed * 6} 0 0)`);
+  const driverAngle = (lastAnimationState.driverDegPerSec * elapsed) % 360;
+  const drivenAngle = (lastAnimationState.drivenDegPerSec * elapsed) % 360;
+
+  const driverGroup = svg.querySelector('#driver-gear');
+  const drivenGroup = svg.querySelector('#driven-gear');
+  if (driverGroup) {
+    driverGroup.setAttribute('transform', `translate(100,110) rotate(${driverAngle})`);
   }
-  if (drivenGear) {
-    drivenGear.setAttribute("transform", `translate(220,120) rotate(${-animationPhase * animationSpeed * 6} 0 0)`);
+  if (drivenGroup) {
+    // opposite direction for external spur gears
+    drivenGroup.setAttribute('transform', `translate(220,110) rotate(${-drivenAngle})`);
   }
 
-  animationPhase += 1;
-  animationFrame = window.requestAnimationFrame(animateGears);
+  animationFrame = window.requestAnimationFrame(animateGearsTimestamp);
 }
 
 function handleSubmit(event) {
@@ -302,6 +366,19 @@ function resetForm() {
   }
 }
 
+// Sync slider and numeric input for efficiency
+const efficiencyInput = document.getElementById('efficiency');
+const efficiencySlider = document.getElementById('efficiency-slider');
+if (efficiencyInput && efficiencySlider) {
+  efficiencySlider.addEventListener('input', () => {
+    efficiencyInput.value = efficiencySlider.value;
+  });
+  efficiencyInput.addEventListener('input', () => {
+    const v = Number(efficiencyInput.value);
+    if (!Number.isNaN(v)) efficiencySlider.value = Math.min(100, Math.max(1, v));
+  });
+}
+
 function copyResults() {
   if (!lastResult) {
     warning("Calculate a result before copying.");
@@ -322,6 +399,49 @@ function copyResults() {
   navigator.clipboard.writeText(payload).then(() => success("Results copied to clipboard."));
 }
 
+function renderWorkedExample(values, result) {
+  const given = `Driver teeth = ${values.driverTeeth}, driven teeth = ${values.drivenTeeth}, driver speed = ${values.driverSpeed} rpm, driver torque = ${values.driverTorque} Nm, efficiency = ${values.efficiency}%`;
+  const formula = `i = N\u2092driven / N\u2092driver`; // placeholder - display handled in HTML
+  const substitution = `i = ${values.drivenTeeth} / ${values.driverTeeth} = ${result.gearRatio.toFixed(3)} and T_out = ${values.driverTorque} × ${result.gearRatio.toFixed(3)} × ${ (values.efficiency/100).toFixed(3) } = ${result.outputTorque.toFixed(2)} Nm`;
+  const answer = `Output RPM = ${result.outputRpm.toFixed(2)} rpm; Output Torque ≈ ${result.outputTorque.toFixed(2)} Nm.`;
+
+  const elGiven = document.getElementById('example-given');
+  const elFormula = document.getElementById('example-formula');
+  const elSub = document.getElementById('example-sub');
+  const elAnswer = document.getElementById('example-answer');
+  if (elGiven) elGiven.textContent = given;
+  if (elFormula) elFormula.innerHTML = 'i = N<sub>driven</sub> / N<sub>driver</sub> &nbsp;&nbsp; T<sub>out</sub> = T<sub>in</sub> × i × η';
+  if (elSub) elSub.innerHTML = substitution;
+  if (elAnswer) elAnswer.textContent = answer;
+}
+
+function renderEngineeringWarnings(values, result) {
+  const container = document.getElementById('engineering-warnings');
+  if (!container) return;
+  const warnings = [];
+  if (Number(values.efficiency) < 90) {
+    warnings.push('Efficiency below 90% may reduce gearset performance and thermal stability.');
+  }
+  if (result.gearRatio > 6) {
+    warnings.push('High gear ratios above 6:1 may require multi-stage gearing for reliable operation.');
+  }
+  if (Number(values.driverTeeth) < 6 || Number(values.drivenTeeth) < 6 || Number(values.driverSpeed) <= 0 || Number(values.driverTorque) <= 0) {
+    warnings.push('Invalid input values detected. Ensure all fields are positive and within the allowed range.');
+  }
+
+  if (warnings.length === 0) {
+    container.innerHTML = '';
+    return;
+  }
+
+  container.innerHTML = warnings.map((w) => `
+    <div class="note-card note-card--warning" role="alert">
+      <strong>Warning</strong>
+      <p>${w}</p>
+    </div>
+  `).join('');
+}
+
 function saveCalculation() {
   if (!lastResult) {
     warning("Calculate a result before saving.");
@@ -337,6 +457,8 @@ function saveCalculation() {
   };
 
   addCalculationHistory(entry);
+  // update recent list for dashboard
+  try { recordRecentCalculator({ id: calculatorDefinition.id, label: calculatorDefinition.name, lastUsed: new Date().toISOString() }); } catch {}
   success("Calculation saved to history.");
 }
 
@@ -410,9 +532,26 @@ function initFavouriteState() {
   favouriteButton.textContent = isFavourite ? "★ Favourite" : "Favourite";
 }
 
+function bindKeyboardShortcuts() {
+  window.addEventListener('keydown', (event) => {
+    if (event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement) {
+      return;
+    }
+    if (event.key === 'Enter') {
+      event.preventDefault();
+      if (form) form.requestSubmit();
+    }
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      resetForm();
+    }
+  });
+}
+
 export function init() {
   renderFormulas();
   initFavouriteState();
+  bindKeyboardShortcuts();
   if (form) {
     form.addEventListener("submit", handleSubmit);
   }
@@ -436,5 +575,8 @@ export function init() {
   }
   if (exportPdfButton) {
     exportPdfButton.addEventListener("click", exportPdf);
+  }
+  if (form) {
+    updateResults(calculate(getFormValues()));
   }
 }

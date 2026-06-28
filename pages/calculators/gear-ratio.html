@@ -11,169 +11,147 @@
     <link rel="stylesheet" href="../../css/main.css" />
     <link rel="stylesheet" href="../../css/pages/gear-ratio.css" />
   </head>
-  <body data-page="gear-ratio" class="app-shell has-background">
+  <body data-page="gear-ratio" class="app-shell gear-page">
     <a class="skip-link" href="#main-content">Skip to main content</a>
     <div id="site-header"></div>
 
-    <main id="main-content" class="app-main">
-      <section class="hero-section" aria-labelledby="gear-ratio-title">
-        <div class="container hero-shell">
-          <div class="hero-copy">
-            <p class="hero-eyebrow">Professional Engineering</p>
-            <h1 id="gear-ratio-title" class="hero-title">Gear Ratio Calculator</h1>
-            <p class="hero-subtitle">
-              Analyse spur gear trains for speed reduction, torque multiplication, power transmission, and rotation direction.
-            </p>
+    <main id="main-content">
+      <section class="gear-hero" aria-labelledby="gear-ratio-title">
+        <div class="gear-hero__inner">
+          <div class="gear-hero__copy">
+            <p class="eyebrow">Professional Engineering</p>
+            <h1 id="gear-ratio-title">Gear Ratio Calculator</h1>
+            <p>Design, analyse, and visualise spur gear transmissions using industry-standard engineering equations for speed reduction, torque multiplication, and power transmission.</p>
           </div>
-
-          <aside class="hero-actions" aria-label="Quick actions">
-            <button type="button" class="btn btn--secondary btn--primary" id="copy-results">Copy Results</button>
-            <button type="button" class="btn btn--secondary" id="save-calculation">Save Calculation</button>
-            <button type="button" class="btn btn--secondary" id="toggle-favourite">Favourite</button>
-            <button type="button" class="btn btn--secondary" id="print-results">Print</button>
-          </aside>
+          <div class="hero-actions" aria-label="Calculator actions">
+            <button type="button" class="action-button" id="copy-results"><span aria-hidden="true">⧉</span> Copy Results</button>
+            <button type="button" class="action-button" id="save-calculation"><span aria-hidden="true">◇</span> Save</button>
+            <button type="button" class="action-button" id="toggle-favourite"><span aria-hidden="true">☆</span> Favourite</button>
+            <button type="button" class="action-button" id="print-results"><span aria-hidden="true">▣</span> Print</button>
+          </div>
         </div>
       </section>
 
-      <section class="page-section page-content" aria-labelledby="gear-ratio-title">
-        <div class="container">
-          <section class="calculator-shell">
-            <div class="calculator-shell__grid">
-              <div class="calculator-shell__content">
-              <section class="glass-panel calculator-panel" aria-labelledby="calculator-panel-title">
-                <h2 id="calculator-panel-title" class="calculator-panel__title">Calculator</h2>
-                <form id="gear-form" novalidate>
-                  <div class="form-grid">
-                    <div class="form-field">
-                      <label class="form-field__label" for="driver-teeth">Driver Gear Teeth</label>
-                      <input class="form-field__input" id="driver-teeth" name="driverTeeth" type="number" step="1" min="6" max="500" placeholder="20" value="20" required aria-describedby="driver-teeth-helper" />
-                      <p id="driver-teeth-helper" class="form-field__helper">Number of teeth on the driving pinion.</p>
-                      <p class="form-field__error" id="error-driver-teeth" aria-live="polite"></p>
-                    </div>
-
-                    <div class="form-field">
-                      <label class="form-field__label" for="driven-teeth">Driven Gear Teeth</label>
-                      <input class="form-field__input" id="driven-teeth" name="drivenTeeth" type="number" step="1" min="6" max="500" placeholder="60" value="60" required aria-describedby="driven-teeth-helper" />
-                      <p id="driven-teeth-helper" class="form-field__helper">Number of teeth on the driven gear.</p>
-                      <p class="form-field__error" id="error-driven-teeth" aria-live="polite"></p>
-                    </div>
-
-                    <div class="form-field">
-                      <label class="form-field__label" for="driver-speed">Driver Speed (RPM)</label>
-                      <input class="form-field__input" id="driver-speed" name="driverSpeed" type="number" step="0.01" min="0.0001" placeholder="1750" value="1750" required aria-describedby="driver-speed-helper" />
-                      <p id="driver-speed-helper" class="form-field__helper">Input rotational speed at the driver shaft.</p>
-                      <p class="form-field__error" id="error-driver-speed" aria-live="polite"></p>
-                    </div>
-
-                    <div class="form-field">
-                      <label class="form-field__label" for="driver-torque">Driver Torque (Nm)</label>
-                      <input class="form-field__input" id="driver-torque" name="driverTorque" type="number" step="0.01" min="0.0001" placeholder="120" value="120" required aria-describedby="driver-torque-helper" />
-                      <p id="driver-torque-helper" class="form-field__helper">Input torque at the driver shaft.</p>
-                      <p class="form-field__error" id="error-driver-torque" aria-live="polite"></p>
-                    </div>
-
-                    <div class="form-field form-field--slider">
-                      <label class="form-field__label" for="efficiency">Gear Efficiency</label>
-                      <input class="form-field__input" id="efficiency" name="efficiency" type="number" step="0.01" min="1" max="100" placeholder="95" value="95" required aria-describedby="efficiency-helper" />
-                      <p id="efficiency-helper" class="form-field__helper">Efficiency (%) — can be adjusted with the slider. Recommended 90–99% for precision gear trains.</p>
-                      <p class="form-field__error" id="error-efficiency" aria-live="polite"></p>
-                      <div class="slider-row">
-                        <input id="efficiency-slider" type="range" min="1" max="100" value="95" aria-label="Gear efficiency slider" />
-                        <div class="slider-range-labels"><span>1%</span><span>100%</span></div>
-                      </div>
-                    </div>
-
-                    <div class="form-field">
-                      <label class="form-field__label" for="pressure-angle">Pressure Angle <span title="Standard involute pressure angle; common values: 20°, 14.5°" aria-hidden="true">ℹ️</span></label>
-                      <input class="form-field__input" id="pressure-angle" name="pressureAngle" type="number" step="0.1" min="1" max="90" placeholder="20" value="20" required aria-describedby="pressure-angle-tip" />
-                      <p id="pressure-angle-tip" class="form-field__helper">Standard involute pressure angle (degrees). Hover for details.</p>
-                      <p class="form-field__error" id="error-pressure-angle" aria-live="polite"></p>
-                    </div>
+      <section class="calculator-dashboard" aria-label="Gear ratio calculator workspace">
+        <div class="dashboard-grid">
+          <div class="dashboard-column dashboard-column--main">
+            <section class="glass-panel calculator-panel reveal" aria-labelledby="calculator-panel-title">
+              <div class="panel-heading">
+                <span class="panel-icon" aria-hidden="true">▦</span>
+                <h2 id="calculator-panel-title">Calculator</h2>
+              </div>
+              <form id="gear-form" novalidate>
+                <div class="form-grid">
+                  <div class="form-field">
+                    <label for="driver-teeth">Driver Gear Teeth</label>
+                    <div class="input-shell"><input id="driver-teeth" name="driverTeeth" type="number" step="1" min="6" max="500" value="20" required aria-describedby="driver-teeth-helper" /><span>teeth</span></div>
+                    <p id="driver-teeth-helper">Number of teeth on the driving pinion.</p>
+                    <p class="form-error" id="error-driver-teeth" aria-live="polite"></p>
                   </div>
-
-                  <div class="button-row">
-                    <button type="submit" class="btn btn--primary">Calculate</button>
-                    <button type="button" class="btn btn--secondary" id="reset-form">Reset</button>
-                    <button type="button" class="btn btn--secondary" id="export-csv">Export CSV</button>
-                    <button type="button" class="btn btn--secondary" id="export-pdf">Export PDF</button>
+                  <div class="form-field">
+                    <label for="driven-teeth">Driven Gear Teeth</label>
+                    <div class="input-shell"><input id="driven-teeth" name="drivenTeeth" type="number" step="1" min="6" max="500" value="60" required aria-describedby="driven-teeth-helper" /><span>teeth</span></div>
+                    <p id="driven-teeth-helper">Number of teeth on the driven gear.</p>
+                    <p class="form-error" id="error-driven-teeth" aria-live="polite"></p>
                   </div>
-                </form>
-              </section>
-
-              <section class="glass-panel calculator-panel" aria-labelledby="formula-heading">
-                <h2 id="formula-heading" class="calculator-panel__title">Engineering Equations</h2>
-                <div id="formula-list" class="formula-stack"></div>
-              </section>
-
-              <section class="glass-panel calculator-panel" aria-labelledby="assumptions-heading">
-                <h2 id="assumptions-heading" class="calculator-panel__title">Engineering Assumptions</h2>
-                <ul class="notes-list">
-                  <li>External spur gears mesh with a single point of contact and a constant pressure angle.</li>
-                  <li>The driven gear rotates at the calculated ratio based on ideal tooth geometry.</li>
-                  <li>Efficiency losses are applied to transmitted torque and power only.</li>
-                </ul>
-              </section>
-
-              <section class="glass-panel calculator-panel" aria-labelledby="example-heading">
-                <h2 id="example-heading" class="calculator-panel__title">Worked Example</h2>
-                <div class="worked-example">
-                  <h3>Given</h3>
-                  <p id="example-given">Driver teeth = 20, driven teeth = 60, driver speed = 1750 rpm, driver torque = 120 Nm, efficiency = 95%.</p>
-                  <h3>Formula</h3>
-                  <p id="example-formula">i = N<sub>driven</sub> / N<sub>driver</sub> &nbsp;&nbsp; T<sub>out</sub> = T<sub>in</sub> × i × η</p>
-                  <h3>Substitution</h3>
-                  <p id="example-sub">i = 60 / 20 = 3 &nbsp;&nbsp; T<sub>out</sub> = 120 × 3 × 0.95 = 342 Nm.</p>
-                  <h3>Answer</h3>
-                  <p id="example-answer">The gear train reduces speed by a factor of 3 and increases torque to approximately 342 Nm at 95% efficiency.</p>
-                </div>
-              </section>
-            </div>
-
-            <div class="calculator-shell__side">
-              <section class="glass-panel calculator-panel" aria-labelledby="results-heading">
-                <h2 id="results-heading" class="calculator-panel__title">Results</h2>
-                <div id="results-grid" class="result-grid" role="list"></div>
-              </section>
-
-              <section class="glass-panel calculator-panel" aria-labelledby="visualization-heading">
-                <h2 id="visualization-heading" class="calculator-panel__title">Interactive Gear Animation</h2>
-                <div class="gear-visualization" aria-live="polite">
-                  <div class="gear-visualization__status" id="animation-status">Ready to calculate.</div>
-                  <svg id="gear-animation" class="gear-visualization__svg" viewBox="0 0 320 220" role="img" aria-label="Animated spur gear visualization"></svg>
-                  <div class="gear-visualization__metrics">
-                    <div class="metric-pill"><span>Ratio</span><strong id="metric-ratio">—</strong></div>
-                    <div class="metric-pill"><span>Input RPM</span><strong id="metric-input-rpm">—</strong></div>
-                    <div class="metric-pill"><span>Output RPM</span><strong id="metric-output-rpm">—</strong></div>
-                    <div class="metric-pill"><span>Direction</span><strong id="metric-direction">—</strong></div>
-                    <div class="metric-pill"><span>Gear Mesh</span><strong id="metric-gear-mesh">—</strong></div>
+                  <div class="form-field">
+                    <label for="driver-speed">Driver Speed (RPM)</label>
+                    <div class="input-shell"><input id="driver-speed" name="driverSpeed" type="number" step="0.01" min="0.0001" value="1750" required aria-describedby="driver-speed-helper" /><span>rpm</span></div>
+                    <p id="driver-speed-helper">Input rotational speed of the driver shaft.</p>
+                    <p class="form-error" id="error-driver-speed" aria-live="polite"></p>
+                  </div>
+                  <div class="form-field">
+                    <label for="driver-torque">Driver Torque (Nm)</label>
+                    <div class="input-shell"><input id="driver-torque" name="driverTorque" type="number" step="0.01" min="0.0001" value="120" required aria-describedby="driver-torque-helper" /><span>Nm</span></div>
+                    <p id="driver-torque-helper">Input torque at the driver shaft.</p>
+                    <p class="form-error" id="error-driver-torque" aria-live="polite"></p>
+                  </div>
+                  <div class="form-field">
+                    <label for="efficiency">Gear Efficiency <span class="tooltip" title="Typical precision gear trains operate between 90% and 99%." aria-label="Efficiency information">i</span></label>
+                    <div class="input-shell"><input id="efficiency" name="efficiency" type="number" step="0.01" min="1" max="100" value="95" required aria-describedby="efficiency-helper" /><span>%</span></div>
+                    <div class="slider-row">
+                      <input id="efficiency-slider" type="range" min="1" max="100" value="95" aria-label="Gear efficiency slider" />
+                      <div><span>1%</span><span>100%</span></div>
+                    </div>
+                    <p id="efficiency-helper">Typical operating range: 90–99%.</p>
+                    <p class="form-error" id="error-efficiency" aria-live="polite"></p>
+                  </div>
+                  <div class="form-field">
+                    <label for="pressure-angle">Pressure Angle <span class="tooltip" title="Standard involute pressure angle; common values are 20° and 14.5°." aria-label="Pressure angle information">i</span></label>
+                    <div class="input-shell"><input id="pressure-angle" name="pressureAngle" type="number" step="0.1" min="1" max="90" value="20" required aria-describedby="pressure-angle-tip" /><span>deg</span></div>
+                    <p id="pressure-angle-tip">Standard involute pressure angle.</p>
+                    <p class="form-error" id="error-pressure-angle" aria-live="polite"></p>
                   </div>
                 </div>
-              </section>
-
-              <section class="glass-panel calculator-panel" aria-labelledby="engineering-notes-heading">
-                <h2 id="engineering-notes-heading" class="calculator-panel__title">Engineering Notes</h2>
-                <div class="notes-stack">
-                  <div id="engineering-warnings" aria-live="polite"></div>
-                  <article class="note-card note-card--info">
-                    <h3>Typical applications</h3>
-                    <p>Motor reducers, conveyor drives, robotics, machine tools, and automotive transmissions.</p>
-                  </article>
-                  <article class="note-card">
-                    <h3>Design considerations</h3>
-                    <p>Check contact ratio, tooth bending stress, lubrication, backlash, and shaft loading.</p>
-                  </article>
-                  <article class="note-card">
-                    <h3>Efficiency considerations</h3>
-                    <p>Higher ratios and lower-quality lubrication can reduce transmitted efficiency and increase heat generation.</p>
-                  </article>
+                <div class="button-row">
+                  <button type="submit" class="button button--primary">⚙ Calculate</button>
+                  <button type="button" class="button" id="reset-form">↻ Reset</button>
+                  <button type="button" class="button" id="export-csv">Export CSV</button>
+                  <button type="button" class="button" id="export-pdf">Export PDF</button>
                 </div>
-              </section>
-            </div>
+              </form>
+            </section>
+
+            <section class="glass-panel reveal" aria-labelledby="formula-heading">
+              <div class="panel-heading"><span class="panel-icon" aria-hidden="true">ƒₓ</span><h2 id="formula-heading">Engineering Equations</h2></div>
+              <div id="formula-list" class="formula-stack"></div>
+            </section>
+
+            <section class="glass-panel reveal" aria-labelledby="assumptions-heading">
+              <div class="panel-heading"><span class="panel-icon panel-icon--green" aria-hidden="true">⌘</span><h2 id="assumptions-heading">Engineering Assumptions</h2></div>
+              <ul class="assumption-list">
+                <li><span>✓</span><div><strong>External spur gear mesh</strong><p>Single point of contact with a constant pressure angle.</p></div></li>
+                <li><span>✓</span><div><strong>Ideal tooth geometry</strong><p>Rotation follows the calculated ratio without tooth interference.</p></div></li>
+                <li><span>✓</span><div><strong>Transmission efficiency</strong><p>Efficiency losses apply to transmitted torque and power only.</p></div></li>
+                <li><span>✓</span><div><strong>Rigid components</strong><p>Backlash, deformation, and friction losses are not explicitly modelled.</p></div></li>
+              </ul>
+            </section>
+
+            <section class="glass-panel reveal" aria-labelledby="example-heading">
+              <div class="panel-heading"><span class="panel-icon" aria-hidden="true">∑</span><h2 id="example-heading">Worked Example</h2></div>
+              <div class="worked-example">
+                <article><h3>Given</h3><p id="example-given">Driver teeth = 20, driven teeth = 60, driver speed = 1750 rpm, driver torque = 120 Nm, efficiency = 95%.</p></article>
+                <article><h3>Formula</h3><p id="example-formula">i = N<sub>driven</sub> / N<sub>driver</sub> &nbsp; T<sub>out</sub> = T<sub>in</sub> × i × η</p></article>
+                <article><h3>Substitution</h3><p id="example-sub">i = 60 / 20 = 3 &nbsp; T<sub>out</sub> = 120 × 3 × 0.95 = 342 Nm.</p></article>
+                <article class="worked-example__answer"><h3>Answer</h3><p id="example-answer">The gear train reduces speed by a factor of 3 and increases torque to approximately 342 Nm at 95% efficiency.</p></article>
+              </div>
+            </section>
           </div>
-        </section>
-      </div>
-    </main>
 
+          <aside class="dashboard-column dashboard-column--side">
+            <section class="glass-panel results-panel reveal" aria-labelledby="results-heading">
+              <div class="panel-heading"><span class="panel-icon" aria-hidden="true">▧</span><h2 id="results-heading">Results</h2></div>
+              <div id="results-grid" class="results-sections" role="list"></div>
+            </section>
+
+            <section class="glass-panel warnings-panel reveal" aria-labelledby="engineering-notes-heading">
+              <div class="panel-heading"><span class="panel-icon panel-icon--yellow" aria-hidden="true">△</span><h2 id="engineering-notes-heading">Engineering Notes &amp; Warnings</h2></div>
+              <div id="engineering-warnings" class="warning-stack" aria-live="polite"></div>
+              <div class="warning-stack">
+                <article class="status-card status-card--green"><span>✓</span><p>All parameters are within recommended ranges.</p></article>
+                <article class="status-card status-card--blue"><span>i</span><p>Efficiency is good (≥ 85%).</p></article>
+                <article class="status-card status-card--yellow"><span>!</span><p>Higher ratios may require multi-stage gearing for better efficiency.</p></article>
+              </div>
+            </section>
+
+            <section class="glass-panel gear-panel reveal" aria-labelledby="visualization-heading">
+              <div class="panel-heading"><span class="panel-icon" aria-hidden="true">♙</span><h2 id="visualization-heading">Interactive Gear Animation</h2></div>
+              <div class="gear-visualization">
+                <p class="sr-only" id="animation-status" aria-live="polite">Ready to calculate.</p>
+                <svg id="gear-animation" viewBox="0 0 320 220" role="img" aria-label="Animated spur gear visualization"></svg>
+                <div class="gear-metrics">
+                  <div><span>Ratio</span><strong id="metric-ratio">—</strong></div>
+                  <div><span>Input RPM</span><strong id="metric-input-rpm">—</strong></div>
+                  <div><span>Output RPM</span><strong id="metric-output-rpm">—</strong></div>
+                  <div><span>Direction</span><strong id="metric-direction">—</strong></div>
+                  <div><span>Gear Mesh</span><strong id="metric-gear-mesh">—</strong></div>
+                </div>
+              </div>
+            </section>
+          </aside>
+        </div>
+      </section>
+    </main>
     <div id="site-footer"></div>
     <script type="module" src="../../js/main.js"></script>
   </body>
