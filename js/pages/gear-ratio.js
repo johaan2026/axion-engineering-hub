@@ -52,6 +52,7 @@ let animationFrame = null;
 let animationPhase = 0;
 let lastAnimationState = null;
 let animationStartTime = null;
+let liveCalculationFrame = null;
 
 function getFormValues() {
   return {
@@ -339,6 +340,33 @@ function handleSubmit(event) {
   success("Gear ratio calculation completed.");
 }
 
+function handleLiveCalculation() {
+  if (liveCalculationFrame) {
+    window.cancelAnimationFrame(liveCalculationFrame);
+  }
+
+  liveCalculationFrame = window.requestAnimationFrame(() => {
+    liveCalculationFrame = null;
+    const values = getFormValues();
+    const allValuesAreFinite = Object.values(values).every(Number.isFinite);
+    const teethAreValid = Number.isInteger(values.driverTeeth)
+      && Number.isInteger(values.drivenTeeth)
+      && values.driverTeeth >= 6
+      && values.driverTeeth <= 500
+      && values.drivenTeeth >= 6
+      && values.drivenTeeth <= 500;
+    const operatingValuesAreValid = values.driverSpeed > 0
+      && values.driverTorque > 0
+      && values.efficiency >= 1
+      && values.efficiency <= 100
+      && values.pressureAngle > 0;
+
+    if (allValuesAreFinite && teethAreValid && operatingValuesAreValid) {
+      updateResults(calculate(values));
+    }
+  });
+}
+
 function resetForm() {
   if (form) {
     form.reset();
@@ -364,6 +392,10 @@ function resetForm() {
   if (svg) {
     svg.innerHTML = "";
   }
+  if (efficiencySlider) {
+    efficiencySlider.value = "95";
+  }
+  updateResults(calculate(getFormValues()));
 }
 
 // Sync slider and numeric input for efficiency
@@ -554,6 +586,7 @@ export function init() {
   bindKeyboardShortcuts();
   if (form) {
     form.addEventListener("submit", handleSubmit);
+    form.addEventListener("input", handleLiveCalculation);
   }
   if (resetButton) {
     resetButton.addEventListener("click", resetForm);
