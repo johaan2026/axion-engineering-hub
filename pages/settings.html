@@ -35,6 +35,29 @@
               <span class="toggle__thumb"></span>
             </button>
           </div>
+          <div class="settings-row">
+            <div>
+              <p class="settings-row__label">Preferred unit system</p>
+              <p class="settings-row__hint">Select the default terminology used across the experience.</p>
+            </div>
+            <div class="settings-control">
+              <label class="settings-control__label" for="unit-system-select">Unit system</label>
+              <select id="unit-system-select" class="settings-control__input" aria-label="Preferred unit system">
+                <option value="si">SI</option>
+                <option value="imperial">Imperial</option>
+              </select>
+            </div>
+          </div>
+          <div class="settings-row">
+            <div>
+              <p class="settings-row__label">Decimal precision</p>
+              <p class="settings-row__hint">Set the number of decimal places shown in results.</p>
+            </div>
+            <div class="settings-control">
+              <label class="settings-control__label" for="decimal-precision-input">Precision</label>
+              <input id="decimal-precision-input" class="settings-control__input" type="number" min="0" max="6" step="1" value="2" aria-label="Decimal precision" />
+            </div>
+          </div>
         </section>
 
         <section class="glass-panel settings-group animate-in animate-in--delay-2" aria-labelledby="history-heading">

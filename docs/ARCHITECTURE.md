@@ -17,6 +17,7 @@ axion-engineering-suite/
 │   ├── main.js             # Application entry
 │   ├── components/         # Layout, navigation, icons
 │   ├── data/               # Static data modules
+│   ├── framework/          # Shared calculator infrastructure
 │   └── pages/              # Page-specific init modules
 ├── calculators/            # Individual calculator pages (Phase 3)
 ├── components/             # Reserved for HTML partials

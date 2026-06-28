@@ -1,5 +1,17 @@
 import { mountLayout, setBackgroundImage } from "./components/layout.js";
 import { initNavigation, initRippleEffect } from "./components/navigation.js";
+import { rememberLastOpenedPage } from "./framework/storage.js";
+import { createPageRouter } from "./framework/router.js";
+
+const pageRouter = createPageRouter({
+  home: { id: "home" },
+  dashboard: { id: "dashboard" },
+  calculators: { id: "calculators" },
+  formulas: { id: "formulas" },
+  materials: { id: "materials" },
+  about: { id: "about" },
+  settings: { id: "settings" },
+});
 
 async function initPageModule(pageId) {
   if (!pageId) {
@@ -16,12 +28,15 @@ async function initPageModule(pageId) {
   }
 }
 
-document.addEventListener("DOMContentLoaded", () => {
+document.addEventListener("DOMContentLoaded", async () => {
   const currentPage = document.body.dataset.page ?? "home";
 
+  rememberLastOpenedPage(currentPage);
   setBackgroundImage();
   mountLayout(currentPage);
   initNavigation();
   initRippleEffect();
-  initPageModule(currentPage);
+
+  const route = pageRouter.init(currentPage);
+  await initPageModule(route?.id ?? currentPage);
 });
