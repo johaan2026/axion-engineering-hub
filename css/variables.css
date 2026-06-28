@@ -1,0 +1,67 @@
+:root {
+  --color-bg-deep: #0f172a;
+  --color-primary: #2563eb;
+  --color-primary-hover: #1d4ed8;
+  --color-accent: #38bdf8;
+  --color-accent-metallic: #64748b;
+  --color-text: #f8fafc;
+  --color-text-muted: #94a3b8;
+  --color-text-subtle: #64748b;
+  --color-border: rgba(148, 163, 184, 0.18);
+  --color-border-strong: rgba(56, 189, 248, 0.35);
+  --color-success: #22c55e;
+  --color-warning: #f59e0b;
+
+  --glass-bg: rgba(15, 23, 42, 0.62);
+  --glass-bg-elevated: rgba(30, 41, 59, 0.72);
+  --glass-blur: 16px;
+  --overlay-dark: rgba(15, 23, 42, 0.78);
+
+  --font-family: "Poppins", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-size-xs: 0.75rem;
+  --font-size-sm: 0.875rem;
+  --font-size-base: 1rem;
+  --font-size-lg: 1.125rem;
+  --font-size-xl: 1.25rem;
+  --font-size-2xl: 1.5rem;
+  --font-size-3xl: 2rem;
+  --font-size-4xl: clamp(2.25rem, 5vw, 3.5rem);
+  --line-height-tight: 1.2;
+  --line-height-normal: 1.6;
+
+  --space-xs: 0.25rem;
+  --space-sm: 0.5rem;
+  --space-md: 1rem;
+  --space-lg: 1.5rem;
+  --space-xl: 2rem;
+  --space-2xl: 3rem;
+  --space-3xl: 4rem;
+
+  --header-height: 4rem;
+  --container-max: 72rem;
+  --container-narrow: 48rem;
+  --radius-sm: 0.375rem;
+  --radius-md: 0.625rem;
+  --radius-lg: 1rem;
+  --radius-xl: 1.25rem;
+
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.24);
+  --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.32);
+  --shadow-lg: 0 16px 48px rgba(0, 0, 0, 0.4);
+  --shadow-glow: 0 0 0 1px rgba(56, 189, 248, 0.12), 0 8px 32px rgba(37, 99, 235, 0.18);
+
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --duration-fast: 150ms;
+  --duration-normal: 250ms;
+  --duration-slow: 400ms;
+
+  --focus-ring: 0 0 0 2px var(--color-bg-deep), 0 0 0 4px var(--color-accent);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --duration-fast: 0ms;
+    --duration-normal: 0ms;
+    --duration-slow: 0ms;
+  }
+}

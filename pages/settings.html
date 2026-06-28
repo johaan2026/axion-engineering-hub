@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="Axion Engineering Suite settings — units, history, and preferences." />
+    <title>Settings | Axion Engineering Suite</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="../css/main.css" />
+  </head>
+  <body data-page="settings" class="app-shell">
+    <a class="skip-link" href="#main-content">Skip to main content</a>
+    <div id="site-header"></div>
+
+    <main id="main-content" class="app-main page-section">
+      <div class="container container--narrow">
+        <header class="page-header animate-in">
+          <span class="page-header__eyebrow">Preferences</span>
+          <h1 class="page-header__title">Settings</h1>
+          <p class="page-header__subtitle">
+            Configure unit preferences and application behaviour. Preferences are stored locally in your browser.
+          </p>
+        </header>
+
+        <section class="glass-panel settings-group animate-in animate-in--delay-1" aria-labelledby="units-heading">
+          <h2 id="units-heading" class="settings-group__title">Units &amp; Display</h2>
+          <div class="settings-row">
+            <div>
+              <p class="settings-row__label">Use SI units by default</p>
+              <p class="settings-row__hint">Prefer metric units in calculators and exports.</p>
+            </div>
+            <button type="button" id="toggle-si-units" class="toggle is-on" role="switch" aria-checked="true" aria-label="Use SI units by default">
+              <span class="toggle__thumb"></span>
+            </button>
+          </div>
+        </section>
+
+        <section class="glass-panel settings-group animate-in animate-in--delay-2" aria-labelledby="history-heading">
+          <h2 id="history-heading" class="settings-group__title">History</h2>
+          <div class="settings-row">
+            <div>
+              <p class="settings-row__label">Save calculation history</p>
+              <p class="settings-row__hint">Store recent calculations in local storage (Phase 2).</p>
+            </div>
+            <button type="button" id="toggle-save-history" class="toggle is-on" role="switch" aria-checked="true" aria-label="Save calculation history">
+              <span class="toggle__thumb"></span>
+            </button>
+          </div>
+          <div class="settings-row">
+            <div>
+              <p class="settings-row__label">Clear stored history</p>
+              <p class="settings-row__hint">Remove all saved calculations from this browser.</p>
+            </div>
+            <button type="button" id="clear-history-btn" class="btn btn--secondary btn--sm">Clear calculation history</button>
+          </div>
+        </section>
+
+        <section class="glass-panel settings-group animate-in animate-in--delay-3" aria-labelledby="accessibility-heading">
+          <h2 id="accessibility-heading" class="settings-group__title">Accessibility</h2>
+          <div class="settings-row">
+            <div>
+              <p class="settings-row__label">Reduce motion</p>
+              <p class="settings-row__hint">Minimise animations and transitions.</p>
+            </div>
+            <button type="button" id="toggle-reduced-motion" class="toggle" role="switch" aria-checked="false" aria-label="Reduce motion">
+              <span class="toggle__thumb"></span>
+            </button>
+          </div>
+        </section>
+      </div>
+    </main>
+
+    <div id="site-footer"></div>
+    <script type="module" src="../js/main.js"></script>
+  </body>
+</html>

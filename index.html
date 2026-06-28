@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="description"
+      content="Axion Engineering Suite — professional mechanical engineering calculators, formulas, and material reference data."
+    />
+    <title>Axion Engineering Suite</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="css/main.css" />
+    <link rel="stylesheet" href="css/pages/home.css" />
+  </head>
+  <body data-page="home" class="app-shell">
+    <a class="skip-link" href="#main-content">Skip to main content</a>
+    <div id="site-header"></div>
+
+    <main id="main-content" class="app-main">
+      <section class="hero">
+        <div class="container hero__content animate-in">
+          <p class="hero__eyebrow">Mechanical Engineering Toolkit</p>
+          <h1 class="hero__title">Axion Engineering Suite</h1>
+          <p class="hero__subtitle">
+            Professional engineering tools for mechanical engineers — calculators,
+            formulas, and material data in one responsive workspace.
+          </p>
+          <div class="hero__actions">
+            <a class="btn btn--primary" href="pages/calculators.html">Start Calculating</a>
+            <a class="btn btn--secondary" href="pages/dashboard.html">Open Dashboard</a>
+          </div>
+        </div>
+      </section>
+
+      <section class="features" aria-labelledby="features-heading">
+        <div class="container">
+          <header class="features__header animate-in animate-in--delay-1">
+            <h2 id="features-heading" class="features__title">Engineering tools, unified</h2>
+            <p class="features__subtitle">
+              Built for students, design engineers, and manufacturing professionals.
+            </p>
+          </header>
+          <div class="features__grid">
+            <a class="card card--link animate-in animate-in--delay-1" href="pages/calculators.html">
+              <div class="card__icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="2" width="16" height="20" rx="2"/><path d="M8 6h8M8 10h2M12 10h2M8 14h2M12 14h2M8 18h8"/></svg>
+              </div>
+              <h3 class="card__title">Engineering Calculators</h3>
+              <p class="card__text">
+                Gear ratios, power and torque, stress, strain, beam deflection, and more.
+              </p>
+            </a>
+            <a class="card card--link animate-in animate-in--delay-2" href="pages/materials.html">
+              <div class="card__icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2 2 7l10 5 10-5-10-5z"/><path d="m2 17 10 5 10-5M2 12l10 5 10-5"/></svg>
+              </div>
+              <h3 class="card__title">Material Database</h3>
+              <p class="card__text">
+                Searchable properties for steel, aluminium, titanium, and common alloys.
+              </p>
+            </a>
+            <a class="card card--link animate-in animate-in--delay-3" href="pages/formulas.html">
+              <div class="card__icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M4 18h4l6-12h6"/><path d="M6 6h4"/></svg>
+              </div>
+              <h3 class="card__title">Formula Library</h3>
+              <p class="card__text">
+                Equations, variables, units, and worked examples for everyday design work.
+              </p>
+            </a>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <div id="site-footer"></div>
+    <script type="module" src="js/main.js"></script>
+  </body>
+</html>

@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="Axion Engineering Suite dashboard — recent calculators, favourites, and quick launch." />
+    <title>Dashboard | Axion Engineering Suite</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="../css/main.css" />
+    <link rel="stylesheet" href="../css/pages/dashboard.css" />
+  </head>
+  <body data-page="dashboard" class="app-shell">
+    <a class="skip-link" href="#main-content">Skip to main content</a>
+    <div id="site-header"></div>
+
+    <main id="main-content" class="app-main page-section">
+      <div class="container">
+        <header class="page-header animate-in">
+          <span class="page-header__eyebrow">Workspace</span>
+          <h1 class="page-header__title">Dashboard</h1>
+          <p class="page-header__subtitle">
+            Your engineering workspace — recently used tools, favourites, and quick access to calculators.
+          </p>
+        </header>
+
+        <div class="dashboard-grid">
+          <section class="glass-panel widget animate-in animate-in--delay-1" aria-labelledby="recent-heading">
+            <div class="widget__header">
+              <h2 id="recent-heading" class="widget__title">Recently Used Calculators</h2>
+            </div>
+            <div id="recent-calculators" class="stack"></div>
+          </section>
+
+          <section class="glass-panel widget animate-in animate-in--delay-2" aria-labelledby="favourites-heading">
+            <div class="widget__header">
+              <h2 id="favourites-heading" class="widget__title">Favourite Calculators</h2>
+            </div>
+            <div id="favourite-calculators" class="stack"></div>
+          </section>
+
+          <section class="glass-panel formula-highlight dashboard-grid__span-2 animate-in animate-in--delay-3" aria-labelledby="formula-day-heading">
+            <h2 id="formula-day-heading" class="sr-only">Formula of the Day</h2>
+            <div id="formula-of-the-day"></div>
+          </section>
+
+          <section class="glass-panel widget dashboard-grid__wide animate-in animate-in--delay-3" aria-labelledby="quick-launch-heading">
+            <div class="widget__header">
+              <h2 id="quick-launch-heading" class="widget__title">Quick Launch</h2>
+              <a class="btn btn--ghost btn--sm" href="calculators.html">View all calculators</a>
+            </div>
+            <div id="quick-launch" class="quick-launch-grid"></div>
+          </section>
+        </div>
+      </div>
+    </main>
+
+    <div id="site-footer"></div>
+    <script type="module" src="../js/main.js"></script>
+  </body>
+</html>

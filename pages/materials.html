@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="Searchable material database with density, modulus, strength, and thermal properties." />
+    <title>Material Database | Axion Engineering Suite</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="../css/main.css" />
+  </head>
+  <body data-page="materials" class="app-shell">
+    <a class="skip-link" href="#main-content">Skip to main content</a>
+    <div id="site-header"></div>
+
+    <main id="main-content" class="app-main page-section">
+      <div class="container">
+        <header class="page-header animate-in">
+          <span class="page-header__eyebrow">Reference</span>
+          <h1 class="page-header__title">Material Database</h1>
+          <p class="page-header__subtitle">
+            Typical mechanical properties for common engineering materials. Verify values for critical design work.
+          </p>
+        </header>
+
+        <div class="search-bar animate-in animate-in--delay-1" style="margin-bottom: 2rem; max-width: 32rem;">
+          <svg class="search-bar__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+          <label class="sr-only" for="materials-search">Search materials</label>
+          <input
+            type="search"
+            id="materials-search"
+            class="search-input"
+            placeholder="Search by material name or application…"
+            autocomplete="off"
+          />
+        </div>
+
+        <div class="data-table-wrap glass-panel animate-in animate-in--delay-2">
+          <table class="data-table">
+            <caption class="sr-only">Engineering material properties</caption>
+            <thead>
+              <tr>
+                <th scope="col">Material</th>
+                <th scope="col">Density</th>
+                <th scope="col">Young's Modulus</th>
+                <th scope="col">Yield Strength</th>
+                <th scope="col">Ultimate Tensile</th>
+                <th scope="col">Poisson Ratio</th>
+                <th scope="col">Thermal Cond.</th>
+                <th scope="col">Specific Heat</th>
+              </tr>
+            </thead>
+            <tbody id="materials-body"></tbody>
+          </table>
+        </div>
+        <p id="materials-empty" class="empty-state glass-panel" hidden>No materials match your search.</p>
+      </div>
+    </main>
+
+    <div id="site-footer"></div>
+    <script type="module" src="../js/main.js"></script>
+  </body>
+</html>
