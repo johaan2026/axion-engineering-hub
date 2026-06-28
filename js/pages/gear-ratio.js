@@ -53,6 +53,7 @@ let animationPhase = 0;
 let lastAnimationState = null;
 let animationStartTime = null;
 let liveCalculationFrame = null;
+let isInitialized = false;
 
 function getFormValues() {
   return {
@@ -581,6 +582,9 @@ function bindKeyboardShortcuts() {
 }
 
 export function init() {
+  if (isInitialized) return;
+  isInitialized = true;
+
   renderFormulas();
   initFavouriteState();
   bindKeyboardShortcuts();
@@ -612,4 +616,10 @@ export function init() {
   if (form) {
     updateResults(calculate(getFormValues()));
   }
+}
+
+if (document.readyState === "loading") {
+  document.addEventListener("DOMContentLoaded", init, { once: true });
+} else {
+  init();
 }
