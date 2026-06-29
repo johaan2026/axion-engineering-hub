@@ -122,20 +122,31 @@ function animateNumber(element, target, digits) {
   requestAnimationFrame(tick);
 }
 
-function resultCard(icon, title, value, unit, description, digits = 3) {
-  return `<article class="pt-result"><div class="pt-result__top"><span class="pt-result__icon">${icon}</span><h3>${title}</h3></div><p class="pt-result__value"><b data-result-number="${value}" data-digits="${digits}">${fmt(value, digits)}</b> <span>${unit}</span></p><p>${description}</p></article>`;
+function resultCard(icon, title, value, unit, description, digits = 3, tone = "blue") {
+  return `<article class="pt-result pt-result--${tone}"><div class="pt-result__top"><span class="pt-result__icon" aria-hidden="true">${icon}</span><h3>${title}</h3></div><p class="pt-result__value"><b data-result-number="${value}" data-digits="${digits}">${fmt(value, digits)}</b> <span>${unit}</span></p><p>${description}</p></article>`;
 }
 
 function renderResult(result) {
   lastResult = result;
-  $("results-grid").innerHTML = [
-    resultCard("⚡", "Power", result.displayPower, result.powerUnit, "Power transmitted at the shaft."),
-    resultCard("↻", "Torque", result.displayTorque, result.torqueUnit, "Rotational force at the shaft."),
-    resultCard("◴", "RPM", result.rpm, "rpm", "Calculated rotational speed.", 1),
-    resultCard("ω", "Angular Velocity", result.angularVelocity, "rad/s", "Speed expressed in SI angular units."),
-    resultCard("⌁", "Mechanical Power", result.displayUsefulPower, result.powerUnit, "Useful output after efficiency losses."),
-    resultCard("η", "Efficiency", result.efficiency, "%", "Selected drivetrain efficiency.", 2),
+  const primary = [
+    resultCard("⚡", "Power", result.displayPower, result.powerUnit, "Power transmitted at the shaft.", 3, "blue"),
+    resultCard("↻", "Torque", result.displayTorque, result.torqueUnit, "Rotational force at the shaft.", 3, "green"),
   ].join("");
+  const secondary = [
+    resultCard("◴", "RPM", result.rpm, "rpm", "Calculated rotational speed.", 1, "orange"),
+    resultCard("ω", "Angular Velocity", result.angularVelocity, "rad/s", "Speed expressed in SI angular units.", 3, "purple"),
+    resultCard("⌁", "Mechanical Power", result.displayUsefulPower, result.powerUnit, "Useful output after efficiency losses.", 3, "blue"),
+    resultCard("η", "Efficiency", result.efficiency, "%", "Selected drivetrain efficiency.", 2, "green"),
+  ].join("");
+  $("results-grid").innerHTML = `
+    <section class="pt-result-group" aria-labelledby="primary-results-title">
+      <h3 class="pt-result-group__title" id="primary-results-title">Primary results</h3>
+      <div class="pt-result-grid">${primary}</div>
+    </section>
+    <section class="pt-result-group" aria-labelledby="secondary-results-title">
+      <h3 class="pt-result-group__title" id="secondary-results-title">Secondary results</h3>
+      <div class="pt-result-grid">${secondary}</div>
+    </section>`;
   $("results-grid").querySelectorAll("[data-result-number]").forEach((node) => {
     animateNumber(node, Number(node.dataset.resultNumber), Number(node.dataset.digits));
   });
@@ -167,22 +178,26 @@ function renderExample(result) {
     power: {
       formula: "P = τ × (2πN / 60)",
       substitution: `P = ${fmt(result.torqueNm)} × (2π × ${fmt(result.rpm, 1)} / 60)`,
+      calculation: `ω = ${fmt(result.angularVelocity)} rad/s; P = ${fmt(result.powerW)} W`,
       answer: `P = ${fmt(result.displayPower)} ${result.powerUnit}`,
     },
     torque: {
       formula: "τ = P / (2πN / 60)",
       substitution: `τ = ${fmt(result.powerW)} / (2π × ${fmt(result.rpm, 1)} / 60)`,
+      calculation: `ω = ${fmt(result.angularVelocity)} rad/s; τ = ${fmt(result.torqueNm)} N·m`,
       answer: `τ = ${fmt(result.displayTorque)} ${result.torqueUnit}`,
     },
     rpm: {
       formula: "N = 60P / (2πτ)",
       substitution: `N = (60 × ${fmt(result.powerW)}) / (2π × ${fmt(result.torqueNm)})`,
+      calculation: `N = ${fmt(result.rpm, 3)} revolutions per minute`,
       answer: `N = ${fmt(result.rpm, 1)} rpm`,
     },
   }[result.solved];
   $("example-given").textContent = given;
   $("example-formula").textContent = content.formula;
   $("example-substitution").textContent = content.substitution;
+  $("example-calculation").textContent = content.calculation;
   $("example-answer").textContent = content.answer;
 }
 
@@ -243,6 +258,7 @@ function toggleFavourite() {
   const active = favourites.some((item) => item.id === "power-torque");
   $("toggle-favourite").textContent = active ? "★ Favourite" : "☆ Favourite";
   $("toggle-favourite").classList.toggle("is-active", active);
+  $("toggle-favourite").setAttribute("aria-pressed", String(active));
   success(active ? "Added to favourites." : "Removed from favourites.");
 }
 
@@ -250,6 +266,7 @@ function initFavourite() {
   const active = getFavouriteCalculators().some((item) => item.id === "power-torque");
   $("toggle-favourite").textContent = active ? "★ Favourite" : "☆ Favourite";
   $("toggle-favourite").classList.toggle("is-active", active);
+  $("toggle-favourite").setAttribute("aria-pressed", String(active));
 }
 
 function exportCsv() {
@@ -286,36 +303,114 @@ async function exportPdf() {
   try {
     await loadJsPdf();
     const input = values();
-    const payload = {
-      title: "Power & Torque Calculation Report",
-      generatedAt: new Date(),
-      calculatorVersion: "1.0",
-      inputs: [
-        { label: "Power", value: input.power === null ? "Solved value" : `${input.power} ${lastResult.powerUnit}` },
-        { label: "Torque", value: input.torque === null ? "Solved value" : `${input.torque} ${lastResult.torqueUnit}` },
-        { label: "Rotational Speed", value: input.rpm === null ? "Solved value" : `${input.rpm} rpm` },
-        { label: "Efficiency", value: `${input.efficiency}%` },
-        { label: "Unit System", value: input.system === "metric" ? "SI (Metric)" : "Imperial (US)" },
-      ],
-      results: [
-        { label: "Power", value: `${fmt(lastResult.displayPower)} ${lastResult.powerUnit}` },
-        { label: "Torque", value: `${fmt(lastResult.displayTorque)} ${lastResult.torqueUnit}` },
-        { label: "RPM", value: `${fmt(lastResult.rpm, 1)} rpm` },
-        { label: "Angular Velocity", value: `${fmt(lastResult.angularVelocity)} rad/s` },
-        { label: "Useful Mechanical Power", value: `${fmt(lastResult.displayUsefulPower)} ${lastResult.powerUnit}` },
-        { label: "Efficiency", value: `${fmt(lastResult.efficiency, 2)}%` },
-      ],
-      formulas: [
-        { title: "Power", equation: "P = torque x angular velocity" },
-        { title: "Angular Velocity", equation: "angular velocity = 2 x pi x RPM / 60" },
-        { title: "Torque", equation: "torque = P / angular velocity" },
-      ],
-      assumptions: ["Steady-state shaft rotation", "Power and torque values refer to the same shaft", "Efficiency applied to useful mechanical output"],
-      notes: ["Validate results against motor, coupling, bearing, and shaft ratings", "Guard all rotating components"],
+    const jsPDF = window.jspdf?.jsPDF ?? window.jspdf;
+    if (!jsPDF) throw new Error("PDF library is unavailable.");
+
+    const doc = new jsPDF({ unit: "pt", format: "a4" });
+    const width = doc.internal.pageSize.getWidth();
+    const height = doc.internal.pageSize.getHeight();
+    const margin = 42;
+    const generatedAt = new Date();
+    const inputs = [
+      ["Power", input.power === null ? "Calculated" : `${input.power} ${lastResult.powerUnit}`],
+      ["Torque", input.torque === null ? "Calculated" : `${input.torque} ${lastResult.torqueUnit}`],
+      ["Rotational speed", input.rpm === null ? "Calculated" : `${input.rpm} rpm`],
+      ["Efficiency", `${input.efficiency}%`],
+      ["Unit system", input.system === "metric" ? "SI (Metric)" : "Imperial (US)"],
+    ];
+    const results = [
+      ["Power", `${fmt(lastResult.displayPower)} ${lastResult.powerUnit}`],
+      ["Torque", `${fmt(lastResult.displayTorque)} ${lastResult.torqueUnit}`],
+      ["RPM", `${fmt(lastResult.rpm, 1)} rpm`],
+      ["Angular velocity", `${fmt(lastResult.angularVelocity)} rad/s`],
+      ["Useful mechanical power", `${fmt(lastResult.displayUsefulPower)} ${lastResult.powerUnit}`],
+      ["Efficiency", `${fmt(lastResult.efficiency, 2)}%`],
+    ];
+    let y = 116;
+
+    const drawHeader = () => {
+      doc.setFillColor(5, 18, 35);
+      doc.rect(0, 0, width, 92, "F");
+      doc.setDrawColor(48, 187, 247);
+      doc.setLineWidth(2);
+      doc.circle(margin + 12, 29, 11);
+      doc.line(margin + 5, 29, margin + 19, 29);
+      doc.line(margin + 12, 22, margin + 12, 36);
+      doc.setFont("helvetica", "bold");
+      doc.setTextColor(255, 255, 255);
+      doc.setFontSize(12);
+      doc.text("AXION ENGINEERING SUITE", margin + 32, 33);
+      doc.setFontSize(19);
+      doc.text("Power & Torque Calculation Report", margin, 63);
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(8.5);
+      doc.setTextColor(168, 190, 209);
+      doc.text(`Generated ${generatedAt.toLocaleDateString()} at ${generatedAt.toLocaleTimeString()}`, margin, 79);
+      doc.text("Version 1.0", width - margin, 79, { align: "right" });
     };
-    const file = await exporter.exportPdf(payload, { filename: `power-torque-report-${new Date().toISOString().slice(0, 10)}.pdf` });
-    if (!(file.content instanceof Blob) || file.content.type !== "application/pdf") throw new Error("Invalid PDF output.");
-    downloadFile(file.content, file.filename, "application/pdf");
+
+    const sectionTitle = (title) => {
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(9);
+      doc.setTextColor(24, 119, 194);
+      doc.text(title.toUpperCase(), margin, y);
+      y += 10;
+      doc.setDrawColor(203, 218, 231);
+      doc.setLineWidth(0.6);
+      doc.line(margin, y, width - margin, y);
+      y += 13;
+    };
+
+    const table = (rows, highlight = false) => {
+      rows.forEach(([label, value], index) => {
+        const rowY = y;
+        doc.setFillColor(...(highlight ? (index < 2 ? [226, 244, 255] : [246, 249, 252]) : (index % 2 ? [248, 250, 252] : [241, 246, 250])));
+        doc.roundedRect(margin, rowY, width - (margin * 2), 25, 2, 2, "F");
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(9);
+        doc.setTextColor(58, 74, 91);
+        doc.text(label, margin + 10, rowY + 16);
+        doc.setFont("helvetica", highlight ? "bold" : "normal");
+        doc.setTextColor(...(highlight ? [10, 94, 162] : [20, 35, 50]));
+        doc.text(String(value), width - margin - 10, rowY + 16, { align: "right" });
+        y += 29;
+      });
+      y += 12;
+    };
+
+    drawHeader();
+    sectionTitle("Input parameters");
+    table(inputs);
+    sectionTitle("Calculated results");
+    table(results, true);
+    sectionTitle("Engineering equations");
+    table([
+      ["Power relationship", "P = torque x angular velocity"],
+      ["Angular velocity", "angular velocity = 2 x pi x RPM / 60"],
+      ["Torque relationship", "torque = P / angular velocity"],
+    ]);
+    sectionTitle("Engineering disclaimer");
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(8.5);
+    doc.setTextColor(77, 92, 108);
+    const disclaimer = "Results are provided for engineering estimation. Verify duty cycle, service factor, thermal limits, shaft stress, coupling capacity, bearing speed and manufacturer ratings before design release or equipment operation.";
+    doc.text(doc.splitTextToSize(disclaimer, width - (margin * 2)), margin, y, { lineHeightFactor: 1.45 });
+
+    const pages = doc.getNumberOfPages();
+    for (let page = 1; page <= pages; page += 1) {
+      doc.setPage(page);
+      doc.setDrawColor(210, 221, 230);
+      doc.line(margin, height - 38, width - margin, height - 38);
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(8);
+      doc.setTextColor(104, 122, 139);
+      doc.text("Generated by Axion Engineering Suite", margin, height - 23);
+      doc.text(`Page ${page} of ${pages}`, width - margin, height - 23, { align: "right" });
+    }
+
+    const blob = doc.output("blob");
+    if (!(blob instanceof Blob) || blob.type !== "application/pdf" || blob.size < 1000) throw new Error("Invalid PDF output.");
+    downloadFile(blob, `power-torque-report-${generatedAt.toISOString().slice(0, 10)}.pdf`, "application/pdf");
     success("PDF report created.");
   } catch (reason) {
     error(reason.message || "PDF export failed.");

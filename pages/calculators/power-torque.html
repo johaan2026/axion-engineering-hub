@@ -28,10 +28,10 @@
             <p>Analyse mechanical power, shaft torque, rotational speed, and efficiency with engineering-grade unit handling.</p>
           </div>
           <div class="pt-actions" aria-label="Calculator actions">
-            <button type="button" class="pt-action" id="copy-results">Copy Results</button>
-            <button type="button" class="pt-action" id="save-calculation">Save</button>
-            <button type="button" class="pt-action" id="toggle-favourite">☆ Favourite</button>
-            <button type="button" class="pt-action" id="print-results">Print</button>
+            <button type="button" class="btn pt-action" id="copy-results" aria-label="Copy calculation results">Copy Results</button>
+            <button type="button" class="btn pt-action" id="save-calculation" aria-label="Save calculation to history">Save</button>
+            <button type="button" class="btn pt-action" id="toggle-favourite" aria-pressed="false">☆ Favourite</button>
+            <button type="button" class="btn pt-action" id="print-results" aria-label="Print calculation results">Print</button>
           </div>
         </div>
       </section>
@@ -73,10 +73,10 @@
                 </div>
                 <p class="pt-form-hint">Enter any two of Power, Torque, and RPM. Leave the value you want to solve blank.</p>
                 <div class="pt-button-row">
-                  <button type="submit" class="pt-button pt-button--primary">Calculate</button>
-                  <button type="button" class="pt-button" id="reset-form">Reset</button>
-                  <button type="button" class="pt-button" id="export-csv">Export CSV</button>
-                  <button type="button" class="pt-button" id="export-pdf">Export PDF</button>
+                  <button type="submit" class="btn pt-button pt-button--primary">Calculate</button>
+                  <button type="button" class="btn pt-button" id="reset-form">Reset</button>
+                  <button type="button" class="btn pt-button" id="export-csv">Export CSV</button>
+                  <button type="button" class="btn pt-button" id="export-pdf">Export PDF</button>
                 </div>
               </form>
             </section>
@@ -93,20 +93,21 @@
             <section class="pt-panel pt-reveal" aria-labelledby="example-heading">
               <div class="pt-heading"><span>∑</span><div><p>Live derivation</p><h2 id="example-heading">Worked Example</h2></div></div>
               <div class="pt-example">
-                <article><h3>Given</h3><p id="example-given">—</p></article>
-                <article><h3>Formula</h3><p id="example-formula">—</p></article>
-                <article><h3>Substitution</h3><p id="example-substitution">—</p></article>
-                <article class="pt-example__answer"><h3>Final Answer</h3><p id="example-answer">—</p></article>
+                <article><span class="pt-step">1</span><div><h3>Given</h3><p id="example-given">—</p></div></article>
+                <article><span class="pt-step">2</span><div><h3>Formula</h3><p id="example-formula">—</p></div></article>
+                <article><span class="pt-step">3</span><div><h3>Substitution</h3><p id="example-substitution">—</p></div></article>
+                <article><span class="pt-step">4</span><div><h3>Calculation</h3><p id="example-calculation">—</p></div></article>
+                <article class="pt-example__answer"><span class="pt-step">5</span><div><h3>Final Answer</h3><p id="example-answer">—</p></div></article>
               </div>
             </section>
 
             <section class="pt-panel pt-reveal" aria-labelledby="notes-heading">
               <div class="pt-heading"><span>◇</span><div><p>Practical guidance</p><h2 id="notes-heading">Engineering Notes</h2></div></div>
               <div class="pt-notes">
-                <article><h3>Design tips</h3><p>Size drives for peak duty, starting torque, service factor, and thermal limits—not nominal power alone.</p></article>
-                <article><h3>Safety notes</h3><p>Guard rotating shafts and couplings. Verify overspeed, shaft stress, and emergency-stop requirements.</p></article>
-                <article><h3>Common mistakes</h3><p>Do not mix kW with W, rpm with rad/s, or input power with useful shaft output.</p></article>
-                <article><h3>Best efficiency ranges</h3><p>Well-sized industrial motors commonly operate most efficiently around 75–100% of rated load.</p></article>
+                <article class="pt-note pt-note--design"><span aria-hidden="true">◇</span><div><h3>Design tips</h3><p>Size drives for peak duty, starting torque, service factor, and thermal limits—not nominal power alone.</p></div></article>
+                <article class="pt-note pt-note--safety"><span aria-hidden="true">△</span><div><h3>Safety notes</h3><p>Guard rotating shafts and couplings. Verify overspeed, shaft stress, and emergency-stop requirements.</p></div></article>
+                <article class="pt-note pt-note--mistake"><span aria-hidden="true">!</span><div><h3>Common mistakes</h3><p>Do not mix kW with W, rpm with rad/s, or input power with useful shaft output.</p></div></article>
+                <article class="pt-note pt-note--efficiency"><span aria-hidden="true">η</span><div><h3>Best efficiency range</h3><p>Well-sized industrial motors commonly operate most efficiently around 75–100% of rated load.</p></div></article>
               </div>
               <div class="pt-applications"><h3>Typical applications</h3><span>Electric motors</span><span>Gearboxes</span><span>Pumps &amp; compressors</span><span>Conveyors</span><span>Machine tools</span></div>
             </section>
@@ -116,7 +117,7 @@
             <div class="pt-sticky">
               <section class="pt-panel pt-reveal" aria-labelledby="results-heading">
                 <div class="pt-heading"><span>⌁</span><div><p>Calculated output</p><h2 id="results-heading">Results</h2></div></div>
-                <div class="pt-results" id="results-grid" aria-live="polite"></div>
+                <div class="pt-results" id="results-grid" aria-live="polite" aria-atomic="true"></div>
               </section>
               <section class="pt-panel pt-panel--warning pt-reveal" aria-labelledby="warnings-heading">
                 <div class="pt-heading"><span>△</span><div><p>Operating checks</p><h2 id="warnings-heading">Warnings</h2></div></div>
@@ -124,11 +125,19 @@
               </section>
               <section class="pt-panel pt-reveal" aria-labelledby="visual-heading">
                 <div class="pt-heading"><span>◉</span><div><p>Drivetrain schematic</p><h2 id="visual-heading">Visualization</h2></div></div>
-                <svg class="pt-machine" viewBox="0 0 620 210" role="img" aria-label="Electric motor, coupling, rotating shaft and load">
-                  <defs><linearGradient id="motorBody" x1="0" x2="1"><stop stop-color="#072e53"/><stop offset=".5" stop-color="#129ee7"/><stop offset="1" stop-color="#061a34"/></linearGradient><linearGradient id="metal" x1="0" x2="0" y1="0" y2="1"><stop stop-color="#d8f3ff"/><stop offset=".45" stop-color="#4385a8"/><stop offset="1" stop-color="#102d45"/></linearGradient></defs>
-                  <g class="pt-motor"><path d="M44 74h137l31 24v65l-31 20H44z" fill="url(#motorBody)" stroke="#36bffa"/><path d="M36 183h166v13H36z" fill="#08223b"/><path d="M58 65v118M76 65v118M94 65v118M112 65v118M130 65v118M148 65v118" stroke="#69d2ff" opacity=".42"/><circle cx="192" cy="130" r="48" fill="#071a2e" stroke="#43c5ff" stroke-width="4"/></g>
-                  <g class="pt-rotor"><rect x="185" y="121" width="319" height="18" rx="9" fill="url(#metal)"/><g class="pt-coupling"><rect x="228" y="105" width="30" height="50" rx="8" fill="url(#metal)"/><rect x="263" y="105" width="30" height="50" rx="8" fill="url(#metal)"/><path d="M258 112l8 9-8 9 8 9-8 9" fill="none" stroke="#37c9ff" stroke-width="4"/></g><path d="M337 99a34 34 0 1 1-1 61" fill="none" stroke="#1fd2ff" stroke-width="5" stroke-linecap="round"/><path d="M331 92l14 9-14 8" fill="#1fd2ff"/></g>
-                  <g class="pt-load"><rect x="493" y="78" width="91" height="105" rx="18" fill="url(#motorBody)" stroke="#36bffa"/><path d="M507 94h63M507 110h63M507 126h63M507 142h63M484 183h111v13H484z" stroke="#68d5ff" opacity=".5"/></g>
+                <svg class="pt-machine" viewBox="0 0 620 210" role="img" aria-labelledby="machine-title machine-description">
+                  <title id="machine-title">Motor drivetrain visualization</title>
+                  <desc id="machine-description">An electric motor drives a mechanical load through a flexible coupling and rotating shaft.</desc>
+                  <defs>
+                    <linearGradient id="motorBody" x1="0" x2="1"><stop stop-color="#061a34"/><stop offset=".48" stop-color="#137fc1"/><stop offset="1" stop-color="#041326"/></linearGradient>
+                    <linearGradient id="metal" x1="0" x2="0" y1="0" y2="1"><stop stop-color="#e8f7ff"/><stop offset=".38" stop-color="#6e9db5"/><stop offset=".55" stop-color="#24445c"/><stop offset="1" stop-color="#0b2033"/></linearGradient>
+                    <filter id="machineGlow"><feGaussianBlur stdDeviation="4" result="blur"/><feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+                    <clipPath id="shaftClip"><rect x="185" y="119" width="319" height="22" rx="11"/></clipPath>
+                  </defs>
+                  <path class="pt-machine__floor" d="M26 195H598" />
+                  <g class="pt-motor"><path d="M44 74h137l31 24v65l-31 20H44z" fill="url(#motorBody)" stroke="#36bffa"/><path d="M36 183h166v13H36z" fill="#08223b"/><path d="M58 65v118M76 65v118M94 65v118M112 65v118M130 65v118M148 65v118" stroke="#69d2ff" opacity=".42"/><circle cx="192" cy="130" r="48" fill="#071a2e" stroke="#43c5ff" stroke-width="4"/><circle cx="192" cy="130" r="30" fill="#06111f" stroke="#1e6f9d"/></g>
+                  <g class="pt-drivetrain"><rect x="185" y="119" width="319" height="22" rx="11" fill="url(#metal)"/><g clip-path="url(#shaftClip)" class="pt-shaft-highlight"><path d="M160 123h380M160 132h380" stroke="#d9f6ff" stroke-width="3" stroke-dasharray="28 22" opacity=".5"/></g><g class="pt-coupling"><rect x="228" y="104" width="30" height="52" rx="7" fill="url(#metal)" stroke="#4cc9f4"/><rect x="263" y="104" width="30" height="52" rx="7" fill="url(#metal)" stroke="#4cc9f4"/><path d="M258 112l8 9-8 9 8 9-8 9" fill="none" stroke="#37c9ff" stroke-width="4"/></g><g class="pt-rotation-indicator" filter="url(#machineGlow)"><path d="M337 99a34 34 0 1 1-1 61" fill="none" stroke="#1fd2ff" stroke-width="4" stroke-linecap="round"/><path d="M331 92l14 9-14 8" fill="#1fd2ff"/></g></g>
+                  <g class="pt-load"><rect x="493" y="78" width="91" height="105" rx="18" fill="url(#motorBody)" stroke="#36bffa"/><circle cx="493" cy="130" r="31" fill="#071a2e" stroke="#43c5ff" stroke-width="3"/><path d="M507 94h63M507 110h63M507 126h63M507 142h63M484 183h111v13H484z" stroke="#68d5ff" opacity=".5"/></g>
                   <text x="105" y="38">MOTOR</text><text x="258" y="188">COUPLING</text><text x="398" y="188">SHAFT</text><text x="536" y="38">LOAD</text>
                 </svg>
                 <div class="pt-stats"><div><span>Power</span><strong id="stat-power">—</strong></div><div><span>Torque</span><strong id="stat-torque">—</strong></div><div><span>Speed</span><strong id="stat-rpm">—</strong></div></div>
