@@ -12,6 +12,9 @@ function isActiveNav(item, currentPage) {
   if (item.id === "home") {
     return currentPage === "home";
   }
+  if (item.id === "calculators" && ["gear-ratio", "power-torque"].includes(currentPage)) {
+    return true;
+  }
   return item.id === currentPage;
 }
 

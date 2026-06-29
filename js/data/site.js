@@ -18,7 +18,7 @@ export function resolvePath(relativePath) {
   if (relativePath.startsWith("/")) {
     return relativePath;
   }
-  return `${base}/${relativePath.replace(/^\.\//, "")}`;
+  return `${base.replace(/\/+$/, "")}/${relativePath.replace(/^\.?\//, "")}`;
 }
 
 export function resolvePage(pageFile) {
@@ -26,7 +26,7 @@ export function resolvePage(pageFile) {
   if (base === "..") {
     return pageFile;
   }
-  return `pages/${pageFile}`;
+  return `${base.replace(/\/+$/, "")}/pages/${pageFile}`;
 }
 
 export const NAV_ITEMS = [
