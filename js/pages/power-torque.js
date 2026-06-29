@@ -13,6 +13,12 @@ const conversions = {
 };
 let lastResult = null;
 let previousSystem = "metric";
+let currentRpm = 0;
+let targetRpm = 0;
+let currentDirection = 1;
+let targetDirection = 1;
+let animationFrameId = null;
+const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
 
 function unitSystem() {
   return document.querySelector('input[name="unit-system"]:checked')?.value || "metric";
@@ -109,7 +115,7 @@ function fmt(value, digits = 3) {
 }
 
 function animateNumber(element, target, digits) {
-  if (matchMedia("(prefers-reduced-motion: reduce)").matches) {
+  if (prefersReducedMotion.matches) {
     element.textContent = fmt(target, digits);
     return;
   }
@@ -121,6 +127,107 @@ function animateNumber(element, target, digits) {
   };
   requestAnimationFrame(tick);
 }
+
+// Drivetrain Animation Controller
+function updateDrivetrainAnimation(rpm) {
+  targetRpm = Math.abs(rpm);
+  targetDirection = rpm >= 0 ? 1 : -1;
+
+  if (prefersReducedMotion.matches) {
+    // Disable continuous rotation for reduced motion
+    document.querySelectorAll('.pt-motor-rotor, .pt-coupling, .pt-shaft-keyway, .pt-load-rotor').forEach(el => {
+      el.style.animation = 'none';
+    });
+    return;
+  }
+
+  // Start animation loop if not already running
+  if (!animationFrameId) {
+    console.log('Animation STARTED:', targetRpm, 'RPM');
+    animateDrivetrain();
+  }
+}
+
+// Stop animation loop
+function stopDrivetrainAnimation() {
+  if (animationFrameId) {
+    cancelAnimationFrame(animationFrameId);
+    animationFrameId = null;
+    console.log('Drivetrain animation stopped');
+  }
+}
+
+function animateDrivetrain() {
+  // Smoothly interpolate RPM
+  const rpmDiff = targetRpm - currentRpm;
+  if (Math.abs(rpmDiff) > 0.1) {
+    currentRpm += rpmDiff * 0.05; // Smooth transition
+  } else {
+    currentRpm = targetRpm;
+  }
+
+  // Smoothly interpolate direction
+  if (currentDirection !== targetDirection) {
+    currentDirection = targetDirection;
+  }
+
+  // Calculate rotation speed (degrees per frame at 60fps)
+  // Base speed: 360 degrees per second at 1000 RPM
+  const degreesPerSecond = (currentRpm / 60) * 360;
+  const degreesPerFrame = (degreesPerSecond / 60) * currentDirection;
+
+  // Apply rotation to motor rotor
+  const motorRotor = document.querySelector('.pt-motor-rotor');
+  if (motorRotor) {
+    const currentTransform = motorRotor.style.transform || '';
+    const match = currentTransform.match(/rotate\(([^)]+)deg\)/);
+    let currentAngle = match ? parseFloat(match[1]) : 0;
+    currentAngle += degreesPerFrame;
+    if (currentAngle > 360) currentAngle -= 360;
+    if (currentAngle < -360) currentAngle += 360;
+    motorRotor.style.transform = `rotate(${currentAngle}deg)`;
+  }
+
+  // Apply rotation to coupling (spins about its own center)
+  const coupling = document.querySelector('.pt-coupling');
+  if (coupling) {
+    const currentTransform = coupling.style.transform || '';
+    const match = currentTransform.match(/rotate\(([^)]+)deg\)/);
+    let currentAngle = match ? parseFloat(match[1]) : 0;
+    currentAngle += degreesPerFrame;
+    if (currentAngle > 360) currentAngle -= 360;
+    if (currentAngle < -360) currentAngle += 360;
+    coupling.style.transform = `rotate(${currentAngle}deg)`;
+  }
+
+  // Apply rotation to shaft keyway (spins about its own center to create rotation illusion)
+  const keyway = document.querySelector('.pt-shaft-keyway');
+  if (keyway) {
+    const currentTransform = keyway.style.transform || '';
+    const match = currentTransform.match(/rotate\(([^)]+)deg\)/);
+    let currentAngle = match ? parseFloat(match[1]) : 0;
+    currentAngle += degreesPerFrame;
+    if (currentAngle > 360) currentAngle -= 360;
+    if (currentAngle < -360) currentAngle += 360;
+    keyway.style.transform = `rotate(${currentAngle}deg)`;
+  }
+
+  // Apply rotation to load rotor
+  const loadRotor = document.querySelector('.pt-load-rotor');
+  if (loadRotor) {
+    const currentTransform = loadRotor.style.transform || '';
+    const match = currentTransform.match(/rotate\(([^)]+)deg\)/);
+    let currentAngle = match ? parseFloat(match[1]) : 0;
+    currentAngle += degreesPerFrame;
+    if (currentAngle > 360) currentAngle -= 360;
+    if (currentAngle < -360) currentAngle += 360;
+    loadRotor.style.transform = `rotate(${currentAngle}deg)`;
+  }
+
+  // Continue animation loop
+  animationFrameId = requestAnimationFrame(animateDrivetrain);
+}
+
 
 function resultCard(icon, title, value, unit, description, digits = 3, tone = "blue") {
   return `<article class="pt-result pt-result--${tone}"><div class="pt-result__top"><span class="pt-result__icon" aria-hidden="true">${icon}</span><h3>${title}</h3></div><p class="pt-result__value"><b data-result-number="${value}" data-digits="${digits}">${fmt(value, digits)}</b> <span>${unit}</span></p><p>${description}</p></article>`;
@@ -147,12 +254,28 @@ function renderResult(result) {
       <h3 class="pt-result-group__title" id="secondary-results-title">Secondary results</h3>
       <div class="pt-result-grid">${secondary}</div>
     </section>`;
+
+  // Trigger fade-in animation for results
+  const resultCards = $("results-grid").querySelectorAll(".pt-result");
+  resultCards.forEach((card, index) => {
+    card.style.animationDelay = `${index * 60}ms`;
+    requestAnimationFrame(() => {
+      card.classList.add("is-visible");
+    });
+  });
+
   $("results-grid").querySelectorAll("[data-result-number]").forEach((node) => {
     animateNumber(node, Number(node.dataset.resultNumber), Number(node.dataset.digits));
   });
-  $("stat-power").textContent = `${fmt(result.displayPower)} ${result.powerUnit}`;
-  $("stat-torque").textContent = `${fmt(result.displayTorque)} ${result.torqueUnit}`;
+  $("stat-direction").textContent = result.rpm >= 0 ? "Clockwise" : "Counter-Clockwise";
   $("stat-rpm").textContent = `${fmt(result.rpm, 1)} rpm`;
+  $("stat-torque").textContent = `${fmt(result.displayTorque)} ${result.torqueUnit}`;
+  $("stat-power").textContent = `${fmt(result.displayPower)} ${result.powerUnit}`;
+  $("stat-efficiency").textContent = `${fmt(result.efficiency, 2)}%`;
+
+  // Update drivetrain animation with calculated RPM
+  updateDrivetrainAnimation(result.rpm);
+
   renderWarnings(result);
   renderExample(result);
 }
@@ -228,7 +351,9 @@ function convertUnitSystem() {
   $("power-unit").textContent = to.powerUnit;
   $("torque-unit").textContent = to.torqueUnit;
   previousSystem = next;
-  run();
+  if (lastResult) {
+    updateDrivetrainAnimation(lastResult.rpm);
+  }
 }
 
 function copyResults() {
@@ -426,6 +551,10 @@ function reset() {
   previousSystem = "metric";
   $("power-unit").textContent = "kW";
   $("torque-unit").textContent = "N·m";
+  currentRpm = 0;
+  targetRpm = 0;
+  currentDirection = 1;
+  targetDirection = 1;
   run();
 }
 
@@ -444,6 +573,16 @@ export function init() {
   $("reset-form").addEventListener("click", reset);
   $("export-csv").addEventListener("click", exportCsv);
   $("export-pdf").addEventListener("click", exportPdf);
+
+  // Listen for reduced motion preference changes
+  prefersReducedMotion.addEventListener("change", () => {
+    if (prefersReducedMotion.matches) {
+      stopDrivetrainAnimation();
+    } else if (lastResult) {
+      updateDrivetrainAnimation(lastResult.rpm);
+    }
+  });
+
   initFavourite();
   run();
 }

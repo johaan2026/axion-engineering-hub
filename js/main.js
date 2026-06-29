@@ -9,6 +9,7 @@ const pageRouter = createPageRouter({
   calculators: { id: "calculators" },
   "gear-ratio": { id: "gear-ratio" },
   "power-torque": { id: "power-torque" },
+  "beam-deflection": { id: "beam-deflection" },
   formulas: { id: "formulas" },
   materials: { id: "materials" },
   about: { id: "about" },

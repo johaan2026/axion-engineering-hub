@@ -71,3 +71,30 @@ Public Release
 * Accessibility Review
 * Netlify Deployment
 * Documentation
+---
+
+## Version 0.6
+
+Engineering Unit Converter
+
+* Length
+* Area
+* Volume
+* Mass
+* Force
+* Pressure
+* Power
+* Torque
+* Temperature
+
+---
+
+## Version 0.7
+
+Formula Library
+
+* Expand to 50+ formulas
+* Categories
+* Search
+* Examples
+* Generated using Claude 4.5 Sonnet

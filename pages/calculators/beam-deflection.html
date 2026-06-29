@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description"
+        content="Beam deflection calculator for cantilever and simply supported beams with loading conditions." />
+    <title>Beam Deflection | Axion Engineering Suite</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="../../css/main.css" />
+    <link rel="stylesheet" href="../../css/pages/beam-deflection.css" />
+</head>
+
+<body data-page="beam-deflection" class="app-shell">
+    <a class="skip-link" href="#main-content">Skip to main content</a>
+    <div id="site-header"></div>
+
+    <main id="main-content" class="app-main page-section">
+        <div class="container">
+            <header class="page-header animate-in">
+                <span class="page-header__eyebrow">Structural Analysis</span>
+                <h1 class="page-header__title">Beam Deflection Calculator</h1>
+                <p class="page-header__subtitle">
+                    Calculate deflection, bending moment, and shear force for standard beam configurations.
+                </p>
+                <div class="page-actions" aria-label="Calculator actions">
+                    <button type="button" class="btn btn--secondary" id="copy-results">Copy Results</button>
+                    <button type="button" class="btn btn--secondary" id="save-calculation">Save</button>
+                    <button type="button" class="btn btn--secondary" id="toggle-favourite" aria-pressed="false">☆
+                        Favourite</button>
+                    <button type="button" class="btn btn--secondary" id="print-results">Print</button>
+                </div>
+            </header>
+
+            <div class="beam-deflection-layout">
+                <div class="beam-input-panel animate-in">
+                    <form id="beam-deflection-form" class="beam-form" novalidate>
+                        <fieldset class="form-section">
+                            <legend class="form-section__title">Beam Configuration</legend>
+
+                            <div class="form-group">
+                                <label class="form-label" for="beam-type">Beam Type</label>
+                                <select id="beam-type" name="beam-type" class="form-select" required>
+                                    <option value="cantilever">Cantilever Beam</option>
+                                    <option value="simply-supported">Simply Supported Beam</option>
+                                </select>
+                                <span class="form-hint">Select the support condition</span>
+                            </div>
+
+                            <div class="form-group">
+                                <label class="form-label" for="beam-length">Beam Length (L)</label>
+                                <div class="input-with-unit">
+                                    <input type="number" id="beam-length" name="beam-length" class="form-input"
+                                        step="0.001" min="0.001" required />
+                                    <span class="input-unit">m</span>
+                                </div>
+                                <span class="form-error" id="beam-length-error"></span>
+                            </div>
+
+                            <div class="form-group">
+                                <label class="form-label" for="load-type">Load Type</label>
+                                <select id="load-type" name="load-type" class="form-select" required>
+                                    <option value="point-load">Point Load (P)</option>
+                                    <option value="uniform-load">Uniform Load (w)</option>
+                                    <option value="moment">Applied Moment (M)</option>
+                                </select>
+                                <span class="form-hint">Select the loading condition</span>
+                            </div>
+
+                            <div class="form-group">
+                                <label class="form-label" for="load-magnitude">Load Magnitude</label>
+                                <div class="input-with-unit">
+                                    <input type="number" id="load-magnitude" name="load-magnitude" class="form-input"
+                                        step="0.001" min="0.001" required />
+                                    <span class="input-unit" id="load-unit">N</span>
+                                </div>
+                                <span class="form-error" id="load-magnitude-error"></span>
+                            </div>
+
+                            <div class="form-group" id="load-position-group">
+                                <label class="form-label" for="load-position">Load Position (a)</label>
+                                <div class="input-with-unit">
+                                    <input type="number" id="load-position" name="load-position" class="form-input"
+                                        step="0.001" min="0" />
+                                    <span class="input-unit">m</span>
+                                </div>
+                                <span class="form-hint">Distance from left support (0 to L)</span>
+                                <span class="form-error" id="load-position-error"></span>
+                            </div>
+
+                            <div class="form-group">
+                                <label class="form-label" for="elastic-modulus">Elastic Modulus (E)</label>
+                                <div class="input-with-unit">
+                                    <input type="number" id="elastic-modulus" name="elastic-modulus" class="form-input"
+                                        step="0.001" min="0.001" required />
+                                    <span class="input-unit">GPa</span>
+                                </div>
+                                <span class="form-error" id="elastic-modulus-error"></span>
+                            </div>
+
+                            <div class="form-group">
+                                <label class="form-label" for="moment-inertia">Moment of Inertia (I)</label>
+                                <div class="input-with-unit">
+                                    <input type="number" id="moment-inertia" name="moment-inertia" class="form-input"
+                                        step="0.001" min="0.001" required />
+                                    <span class="input-unit">m⁴</span>
+                                </div>
+                                <span class="form-error" id="moment-inertia-error"></span>
+                            </div>
+                        </fieldset>
+
+                        <div class="form-actions">
+                            <button type="submit" class="btn btn--primary">Calculate</button>
+                            <button type="button" id="reset-form" class="btn btn--secondary">Reset</button>
+                            <button type="button" id="export-csv" class="btn btn--secondary">Export CSV</button>
+                            <button type="button" id="export-pdf" class="btn btn--secondary">Export PDF</button>
+                        </div>
+                    </form>
+                </div>
+
+                <div class="beam-results-panel animate-in">
+                    <div id="results-container" class="results-container">
+                        <div class="results-placeholder">
+                            <svg class="results-placeholder__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2">
+                                <path
+                                    d="M9 17H5a2 2 0 0 0-2 2 2 2 0 0 0 2 2h14a2 2 0 0 0 2-2 2 2 0 0 0-2-2h-4M9 17v4M15 17v4M9 17H5a2 2 0 0 1-2-2v-2a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v2a2 2 0 0 1-2 2h-4" />
+                            </svg>
+                            <p>Enter beam parameters and click Calculate to see results</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <div id="site-footer"></div>
+    <script type="module" src="../../js/main.js"></script>
+</body>
+
+</html>
