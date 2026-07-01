@@ -37,8 +37,11 @@ let drivetrainRotors = [];
 let powerParticles = [];
 let powerParticlePhase = 0;
 let numberAnimations = [];
+let rpmTransitionStart = 0;
+let rpmTransitionFrom = 0;
+let rpmTransitionTo = 0;
+let rpmTransitionDuration = 320;
 const drivetrainSelector = ".pt-motor-rotor, .pt-coupling, .pt-shaft-keyway, .pt-load-rotor";
-const maximumVisualRpm = 120;
 const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
 
 function unitSystem() {
@@ -196,32 +199,37 @@ function animateNumber(element, target, digits) {
 function updateDrivetrainAnimation(rpm) {
   targetRpm = Math.abs(rpm);
   targetDirection = rpm >= 0 ? 1 : -1;
-  currentRpm = targetRpm;
   currentDirection = targetDirection;
 
-  stopDrivetrainAnimation();
-  drivetrainRotors = Array.from(document.querySelectorAll(drivetrainSelector));
-  powerParticles = Array.from(document.querySelectorAll(".pt-power-particles circle"));
+  if (!drivetrainRotors.length) {
+    drivetrainRotors = Array.from(document.querySelectorAll(drivetrainSelector));
+  }
+  if (!powerParticles.length) {
+    powerParticles = Array.from(document.querySelectorAll(".pt-power-particles circle"));
+  }
 
   if (!document.querySelector(".pt-motor-rotor")) {
     console.warn("[Power & Torque] Motor rotor element '.pt-motor-rotor' was not found; motor animation cannot start.");
   }
 
   if (prefersReducedMotion.matches || document.hidden) {
+    stopDrivetrainAnimation();
     return;
   }
 
+  stopDrivetrainAnimation();
+  rpmTransitionFrom = currentRpm;
+  rpmTransitionTo = targetRpm;
+  rpmTransitionStart = performance.now();
   drivetrainLastTimestamp = null;
   animationFrameId = requestAnimationFrame(animateDrivetrain);
 }
 
-function getVisualRpm(actualRpm) {
-  // Use square root scaling for smooth visual representation
-  // 0 RPM = stopped, 3000 RPM = maximum visual speed
-  const maxRpm = 3000;
+function getVisualSpeed(actualRpm) {
   if (actualRpm <= 0) return 0;
-  const normalized = Math.min(actualRpm / maxRpm, 1);
-  return maximumVisualRpm * Math.sqrt(normalized);
+  const cappedRpm = Math.min(actualRpm, 6000);
+  const normalized = Math.sqrt(cappedRpm / 6000);
+  return 18 + normalized * 160;
 }
 
 function stopDrivetrainAnimation() {
@@ -236,6 +244,8 @@ function resetDrivetrainOrientation() {
   stopDrivetrainAnimation();
   drivetrainAngle = 0;
   powerParticlePhase = 0;
+  currentRpm = 0;
+  targetRpm = 0;
   numberAnimations = [];
   drivetrainRotors = Array.from(document.querySelectorAll(drivetrainSelector));
   powerParticles = Array.from(document.querySelectorAll(".pt-power-particles circle"));
@@ -248,21 +258,28 @@ function resetDrivetrainOrientation() {
 }
 
 function animateDrivetrain(timestamp) {
-  if (document.hidden) {
+  if (document.hidden || prefersReducedMotion.matches) {
     stopDrivetrainAnimation();
     return;
   }
 
-  if (drivetrainLastTimestamp !== null) {
-    const elapsedSeconds = Math.min((timestamp - drivetrainLastTimestamp) / 1000, 0.1);
-    const visualRpm = getVisualRpm(targetRpm);
-    drivetrainAngle = (drivetrainAngle + targetDirection * visualRpm * 6 * elapsedSeconds) % 360;
-
-    // Power flow particles - represent transmitted power
-    const particleSpeed = lastResult ? 28 + Math.min(92, 18 * Math.log10(1 + lastResult.powerW / 1000)) : 0;
-    powerParticlePhase = (powerParticlePhase + particleSpeed * elapsedSeconds) % 319;
+  if (drivetrainLastTimestamp === null) {
+    drivetrainLastTimestamp = timestamp;
+    rpmTransitionStart = timestamp;
   }
+
+  const elapsedSeconds = Math.min((timestamp - drivetrainLastTimestamp) / 1000, 0.05);
   drivetrainLastTimestamp = timestamp;
+
+  const transitionProgress = Math.min((timestamp - rpmTransitionStart) / rpmTransitionDuration, 1);
+  const easedProgress = transitionProgress < 1 ? 0.5 - 0.5 * Math.cos(Math.PI * transitionProgress) : 1;
+  currentRpm = rpmTransitionFrom + (rpmTransitionTo - rpmTransitionFrom) * easedProgress;
+
+  const visualSpeed = getVisualSpeed(currentRpm);
+  drivetrainAngle = (drivetrainAngle + currentDirection * visualSpeed * elapsedSeconds) % 360;
+
+  const particleSpeed = 24 + Math.min(96, 72 * Math.sqrt(Math.min(currentRpm / 6000, 1)));
+  powerParticlePhase = (powerParticlePhase + particleSpeed * elapsedSeconds) % 320;
 
   const gaugeNeedle = $("pt-gauge-needle");
   numberAnimations = numberAnimations.filter((animation) => {
@@ -271,18 +288,15 @@ function animateDrivetrain(timestamp) {
     return progress < 1;
   });
 
-  // Rotate all drivetrain components
   drivetrainRotors.forEach((element) => {
     element.style.transform = `rotate(${drivetrainAngle}deg)`;
   });
 
-  // Animate power flow particles
   powerParticles.forEach((element, index) => {
-    const offset = (powerParticlePhase + index * 79.75) % 319;
+    const offset = ((powerParticlePhase + index * 76) % 320) - 20;
     element.style.transform = `translateX(${offset}px)`;
   });
 
-  // Update gauge needle
   if (gaugeNeedle) {
     const angle = Math.max(-110, Math.min(110, (currentRpm / 1800) * 110));
     gaugeNeedle.style.transform = `rotate(${currentDirection >= 0 ? angle : -angle}deg)`;
@@ -296,7 +310,6 @@ function resultCard(icon, title, value, unit, description, digits = 2, tone = "b
 }
 
 function updateMechanicalVisualization(result) {
-  // Torque intensity for visual effects (logarithmic scaling)
   const torqueIntensity = Math.min(1, Math.log10(1 + result.torqueNm) / 4);
   const powerIntensity = Math.min(1, Math.log10(1 + result.powerW / 100) / 3);
 
@@ -306,33 +319,29 @@ function updateMechanicalVisualization(result) {
   const loadRim = $("pt-load-rim");
   const loadHub = $("pt-load-hub");
 
-  // Torque arrow - thicker for higher torque
   if (torqueArrow) {
-    torqueArrow.style.strokeWidth = String(2.5 + torqueIntensity * 5);
+    torqueArrow.style.strokeWidth = String(2.5 + torqueIntensity * 5.5);
     torqueArrow.style.opacity = String(0.6 + torqueIntensity * 0.4);
   }
 
-  // Power flow line - thicker for higher power
   if (powerFlow) {
     powerFlow.style.strokeWidth = String(2 + powerIntensity * 4);
     powerFlow.style.opacity = String(0.5 + powerIntensity * 0.5);
   }
 
-  // Shaft glow - stronger for higher torque
   if (shaft) {
     shaft.style.filter = torqueIntensity > 0.15 ? "url(#shaftGlow)" : "none";
     shaft.style.opacity = String(0.82 + torqueIntensity * 0.18);
   }
 
-  // Load rim - thicker stroke for higher torque
   if (loadRim) {
     loadRim.style.strokeWidth = String(2.5 + torqueIntensity * 3.5);
     loadRim.style.filter = torqueIntensity > 0.3 ? "url(#machineGlow)" : "none";
   }
 
-  // Load hub glow
   if (loadHub) {
     loadHub.style.filter = torqueIntensity > 0.4 ? "url(#shaftGlow)" : "none";
+    loadHub.style.opacity = String(0.8 + torqueIntensity * 0.2);
   }
 }
 
