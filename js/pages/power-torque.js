@@ -33,6 +33,10 @@ let targetDirection = 1;
 let animationFrameId = null;
 let drivetrainAngle = 0;
 let drivetrainLastTimestamp = null;
+let drivetrainRotors = [];
+const drivetrainSelector = ".pt-motor-rotor, .pt-coupling, .pt-shaft-keyway, .pt-load-rotor";
+const visualRpmScale = 0.04;
+const maximumVisualRpm = 120;
 const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
 
 function unitSystem() {
@@ -197,11 +201,13 @@ function updateDrivetrainAnimation(rpm) {
   currentDirection = targetDirection;
 
   stopDrivetrainAnimation();
+  drivetrainRotors = Array.from(document.querySelectorAll(drivetrainSelector));
 
-  if (prefersReducedMotion.matches) {
-    document.querySelectorAll(".pt-motor-rotor, .pt-coupling, .pt-shaft-keyway, .pt-load-rotor").forEach((element) => {
-      element.style.transform = "";
-    });
+  if (!document.querySelector(".pt-motor-rotor")) {
+    console.warn("[Power & Torque] Motor rotor element '.pt-motor-rotor' was not found; motor animation cannot start.");
+  }
+
+  if (prefersReducedMotion.matches || document.hidden) {
     return;
   }
 
@@ -217,17 +223,31 @@ function stopDrivetrainAnimation() {
   drivetrainLastTimestamp = null;
 }
 
+function resetDrivetrainOrientation() {
+  stopDrivetrainAnimation();
+  drivetrainAngle = 0;
+  drivetrainRotors = Array.from(document.querySelectorAll(drivetrainSelector));
+  drivetrainRotors.forEach((element) => {
+    element.style.transform = "rotate(0deg)";
+  });
+}
+
 function animateDrivetrain(timestamp) {
+  if (document.hidden) {
+    stopDrivetrainAnimation();
+    return;
+  }
+
   if (drivetrainLastTimestamp !== null) {
     const elapsedSeconds = Math.min((timestamp - drivetrainLastTimestamp) / 1000, 0.1);
-    drivetrainAngle = (drivetrainAngle + targetDirection * targetRpm * 6 * elapsedSeconds) % 360;
+    const visualRpm = Math.min(targetRpm * visualRpmScale, maximumVisualRpm);
+    drivetrainAngle = (drivetrainAngle + targetDirection * visualRpm * 6 * elapsedSeconds) % 360;
   }
   drivetrainLastTimestamp = timestamp;
 
-  const rigidRotors = document.querySelectorAll(".pt-motor-rotor, .pt-coupling, .pt-shaft-keyway, .pt-load-rotor");
   const gaugeNeedle = $("pt-gauge-needle");
 
-  rigidRotors.forEach((element) => {
+  drivetrainRotors.forEach((element) => {
     element.style.transform = `rotate(${drivetrainAngle}deg)`;
   });
 
@@ -596,6 +616,7 @@ function reset() {
   currentDirection = 1;
   targetDirection = 1;
   run();
+  resetDrivetrainOrientation();
 }
 
 export function init() {
@@ -621,6 +642,13 @@ export function init() {
     if (prefersReducedMotion.matches) {
       stopDrivetrainAnimation();
     } else if (lastResult) {
+      updateDrivetrainAnimation(lastResult.rpm);
+    }
+  });
+  document.addEventListener("visibilitychange", () => {
+    if (document.hidden) {
+      stopDrivetrainAnimation();
+    } else if (lastResult && !prefersReducedMotion.matches) {
       updateDrivetrainAnimation(lastResult.rpm);
     }
   });

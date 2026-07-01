@@ -1069,8 +1069,8 @@
 
 /* Motor Rotor */
 .pt-motor-rotor {
-  transform-origin: 192px 130px;
-  transform-box: view-box;
+  transform-origin: center center;
+  transform-box: fill-box;
   /* Animation controlled by JavaScript for dynamic RPM */
 }
 
