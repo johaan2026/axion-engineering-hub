@@ -31,18 +31,20 @@ let targetRpm = 0;
 let currentDirection = 1;
 let targetDirection = 1;
 let animationFrameId = null;
+let motorRotorAngle = 0;
 let drivetrainAngle = 0;
-let drivetrainLastTimestamp = null;
-let drivetrainRotors = [];
-let powerParticles = [];
-let powerParticlePhase = 0;
+let animationLastTimestamp = null;
+let motorRotorElement = null;
+let drivetrainElement = null;
+let visualRpm = 0;
+let visualRpmTransitionStart = 0;
+let visualRpmTransitionFrom = 0;
+let visualRpmTransitionTo = 0;
+let visualRpmTransitionDuration = 300;
 let numberAnimations = [];
-let rpmTransitionStart = 0;
-let rpmTransitionFrom = 0;
-let rpmTransitionTo = 0;
-let rpmTransitionDuration = 320;
-const drivetrainSelector = ".pt-motor-rotor, .pt-coupling, .pt-shaft-keyway, .pt-load-rotor";
 const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
+const motorRotorOrigin = { x: 192, y: 130 };
+const drivetrainOrigin = { x: 344, y: 130 };
 
 function unitSystem() {
   return document.querySelector('input[name="unit-system"]:checked')?.value || "metric";
@@ -201,15 +203,16 @@ function updateDrivetrainAnimation(rpm) {
   targetDirection = rpm >= 0 ? 1 : -1;
   currentDirection = targetDirection;
 
-  if (!drivetrainRotors.length) {
-    drivetrainRotors = Array.from(document.querySelectorAll(drivetrainSelector));
+  if (!motorRotorElement) {
+    motorRotorElement = document.getElementById("pt-motor-rotor");
   }
-  if (!powerParticles.length) {
-    powerParticles = Array.from(document.querySelectorAll(".pt-power-particles circle"));
+  if (!drivetrainElement) {
+    drivetrainElement = document.getElementById("pt-drivetrain");
   }
 
-  if (!document.querySelector(".pt-motor-rotor")) {
-    console.warn("[Power & Torque] Motor rotor element '.pt-motor-rotor' was not found; motor animation cannot start.");
+  if (!motorRotorElement || !drivetrainElement) {
+    console.warn("[Power & Torque] SVG animation elements were not found; motor animation cannot start.");
+    return;
   }
 
   if (prefersReducedMotion.matches || document.hidden) {
@@ -218,18 +221,21 @@ function updateDrivetrainAnimation(rpm) {
   }
 
   stopDrivetrainAnimation();
-  rpmTransitionFrom = currentRpm;
-  rpmTransitionTo = targetRpm;
-  rpmTransitionStart = performance.now();
-  drivetrainLastTimestamp = null;
+  visualRpmTransitionFrom = visualRpm;
+  visualRpmTransitionTo = getVisualRpm(targetRpm);
+  visualRpmTransitionStart = performance.now();
+  animationLastTimestamp = null;
   animationFrameId = requestAnimationFrame(animateDrivetrain);
 }
 
-function getVisualSpeed(actualRpm) {
+function getVisualRpm(actualRpm) {
   if (actualRpm <= 0) return 0;
   const cappedRpm = Math.min(actualRpm, 6000);
-  const normalized = Math.sqrt(cappedRpm / 6000);
-  return 18 + normalized * 160;
+  if (cappedRpm <= 30) return cappedRpm * 0.35;
+  if (cappedRpm <= 300) return 10.5 + (cappedRpm - 30) * 0.09;
+  if (cappedRpm <= 1750) return 34.5 + (cappedRpm - 300) * 0.1;
+  if (cappedRpm <= 3000) return 180 + (cappedRpm - 1750) * 0.12;
+  return Math.min(380, 320 + (cappedRpm - 3000) * 0.02);
 }
 
 function stopDrivetrainAnimation() {
@@ -237,24 +243,31 @@ function stopDrivetrainAnimation() {
     cancelAnimationFrame(animationFrameId);
     animationFrameId = null;
   }
-  drivetrainLastTimestamp = null;
+  animationLastTimestamp = null;
+}
+
+function updateSvgTransforms() {
+  if (motorRotorElement) {
+    motorRotorElement.setAttribute("transform", `rotate(${motorRotorAngle} ${motorRotorOrigin.x} ${motorRotorOrigin.y})`);
+  }
+  if (drivetrainElement) {
+    drivetrainElement.setAttribute("transform", `rotate(${drivetrainAngle} ${drivetrainOrigin.x} ${drivetrainOrigin.y})`);
+  }
 }
 
 function resetDrivetrainOrientation() {
   stopDrivetrainAnimation();
+  motorRotorAngle = 0;
   drivetrainAngle = 0;
-  powerParticlePhase = 0;
+  visualRpm = 0;
   currentRpm = 0;
   targetRpm = 0;
+  currentDirection = 1;
+  targetDirection = 1;
   numberAnimations = [];
-  drivetrainRotors = Array.from(document.querySelectorAll(drivetrainSelector));
-  powerParticles = Array.from(document.querySelectorAll(".pt-power-particles circle"));
-  drivetrainRotors.forEach((element) => {
-    element.style.transform = "rotate(0deg)";
-  });
-  powerParticles.forEach((element) => {
-    element.style.transform = "translateX(0px)";
-  });
+  motorRotorElement = document.getElementById("pt-motor-rotor");
+  drivetrainElement = document.getElementById("pt-drivetrain");
+  updateSvgTransforms();
 }
 
 function animateDrivetrain(timestamp) {
@@ -263,44 +276,29 @@ function animateDrivetrain(timestamp) {
     return;
   }
 
-  if (drivetrainLastTimestamp === null) {
-    drivetrainLastTimestamp = timestamp;
-    rpmTransitionStart = timestamp;
+  if (animationLastTimestamp === null) {
+    animationLastTimestamp = timestamp;
+    visualRpmTransitionStart = timestamp;
   }
 
-  const elapsedSeconds = Math.min((timestamp - drivetrainLastTimestamp) / 1000, 0.05);
-  drivetrainLastTimestamp = timestamp;
+  const elapsedSeconds = Math.min((timestamp - animationLastTimestamp) / 1000, 0.05);
+  animationLastTimestamp = timestamp;
 
-  const transitionProgress = Math.min((timestamp - rpmTransitionStart) / rpmTransitionDuration, 1);
+  const transitionProgress = Math.min((timestamp - visualRpmTransitionStart) / visualRpmTransitionDuration, 1);
   const easedProgress = transitionProgress < 1 ? 0.5 - 0.5 * Math.cos(Math.PI * transitionProgress) : 1;
-  currentRpm = rpmTransitionFrom + (rpmTransitionTo - rpmTransitionFrom) * easedProgress;
+  visualRpm = visualRpmTransitionFrom + (visualRpmTransitionTo - visualRpmTransitionFrom) * easedProgress;
 
-  const visualSpeed = getVisualSpeed(currentRpm);
-  drivetrainAngle = (drivetrainAngle + currentDirection * visualSpeed * elapsedSeconds) % 360;
+  const angularVelocity = currentDirection * visualRpm * 6;
+  motorRotorAngle = (motorRotorAngle + angularVelocity * elapsedSeconds) % 360;
+  drivetrainAngle = (drivetrainAngle + angularVelocity * elapsedSeconds) % 360;
 
-  const particleSpeed = 24 + Math.min(96, 72 * Math.sqrt(Math.min(currentRpm / 6000, 1)));
-  powerParticlePhase = (powerParticlePhase + particleSpeed * elapsedSeconds) % 320;
-
-  const gaugeNeedle = $("pt-gauge-needle");
   numberAnimations = numberAnimations.filter((animation) => {
     const progress = Math.min((timestamp - animation.started) / 450, 1);
     animation.element.textContent = fmt(animation.target * (1 - ((1 - progress) ** 3)), animation.digits);
     return progress < 1;
   });
 
-  drivetrainRotors.forEach((element) => {
-    element.style.transform = `rotate(${drivetrainAngle}deg)`;
-  });
-
-  powerParticles.forEach((element, index) => {
-    const offset = ((powerParticlePhase + index * 76) % 320) - 20;
-    element.style.transform = `translateX(${offset}px)`;
-  });
-
-  if (gaugeNeedle) {
-    const angle = Math.max(-110, Math.min(110, (currentRpm / 1800) * 110));
-    gaugeNeedle.style.transform = `rotate(${currentDirection >= 0 ? angle : -angle}deg)`;
-  }
+  updateSvgTransforms();
 
   animationFrameId = requestAnimationFrame(animateDrivetrain);
 }

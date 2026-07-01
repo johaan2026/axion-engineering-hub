@@ -1088,42 +1088,19 @@
   stroke-linecap: round;
 }
 
-.pt-shaft-keyway {
-  transform-origin: 344px 130px;
-  transform-box: view-box;
-  /* Animation controlled by JavaScript for dynamic RPM */
-}
-
-/* Motor Rotor */
 .pt-motor-rotor {
-  transform-origin: center center;
+  transform-origin: 192px 130px;
   transform-box: fill-box;
-  /* Animation controlled by JavaScript for dynamic RPM */
 }
 
-/* Shaft and Coupling */
 .pt-drivetrain {
   isolation: isolate;
-}
-
-/* Coupling */
-.pt-coupling {
-  transform-origin: 260.5px 130px;
-  transform-box: view-box;
-  /* Animation controlled by JavaScript for dynamic RPM */
-}
-
-/* Load Rotor */
-.pt-load-rotor {
-  transform-origin: 493px 130px;
-  transform-box: view-box;
-  /* Animation controlled by JavaScript for dynamic RPM */
+  transform-origin: 344px 130px;
+  transform-box: fill-box;
 }
 
 .pt-motor-rotor,
-.pt-coupling,
-.pt-shaft-keyway,
-.pt-load-rotor {
+.pt-drivetrain {
   will-change: transform;
 }
 
@@ -1138,22 +1115,8 @@
   border-radius: var(--pt-radius-md);
   background: radial-gradient(circle at 50% 50%, rgba(56, 199, 255, 0.15) 0%, transparent 70%);
   opacity: 0;
-  animation: pt-glow-pulse 3s ease-in-out infinite;
   pointer-events: none;
   z-index: 1;
-}
-
-/* Glow Pulse Animation */
-@keyframes pt-glow-pulse {
-
-  0%,
-  100% {
-    opacity: 0.3;
-  }
-
-  50% {
-    opacity: 0.6;
-  }
 }
 
 /* Visualization Enhancements */
