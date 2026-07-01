@@ -574,10 +574,16 @@
 
 .pt-formulas article {
   min-width: 0;
-  padding: 22px 20px 20px;
-  border: 1px solid rgba(128, 178, 216, 0.15);
+  padding: 24px 22px 22px;
+  border: 1px solid rgba(128, 178, 216, 0.18);
   border-radius: var(--pt-radius-md);
-  background: linear-gradient(160deg, rgba(5, 21, 39, 0.8) 0%, rgba(2, 11, 22, 0.52) 100%);
+  background:
+    linear-gradient(160deg, rgba(8, 26, 46, 0.88) 0%, rgba(3, 14, 28, 0.65) 100%);
+  backdrop-filter: blur(12px) saturate(110%);
+  -webkit-backdrop-filter: blur(12px) saturate(110%);
+  box-shadow:
+    0 8px 24px rgba(0, 0, 0, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.03);
   transition:
     border-color var(--pt-duration-normal) ease,
     transform var(--pt-duration-normal) ease,
@@ -585,25 +591,30 @@
 }
 
 .pt-formulas article:hover {
-  border-color: rgba(56, 199, 255, 0.28);
-  transform: translateY(-2px);
-  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.3);
+  border-color: rgba(56, 199, 255, 0.35);
+  transform: translateY(-3px);
+  box-shadow:
+    0 14px 40px rgba(0, 0, 0, 0.4),
+    0 0 24px rgba(56, 199, 255, 0.08);
 }
 
 .pt-equation {
   display: grid;
   place-items: center;
-  min-height: 90px;
-  margin: 0 0 20px;
-  padding-bottom: 18px;
-  border-bottom: 1px solid rgba(128, 178, 216, 0.12);
+  min-height: 100px;
+  margin: 0 0 22px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid rgba(128, 178, 216, 0.15);
   color: #ffffff;
   text-align: center;
   letter-spacing: 0.02em;
+  background: radial-gradient(circle at 50% 50%, rgba(56, 199, 255, 0.04) 0%, transparent 70%);
+  border-radius: var(--pt-radius-sm);
 }
 
 .pt-equation .katex {
-  font-size: 1.1rem;
+  font-size: 1.15rem;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
 }
 
 .pt-fraction {
@@ -633,25 +644,27 @@
 
 .pt-formulas dl div {
   display: grid;
-  grid-template-columns: 70px 1fr;
-  gap: 10px;
+  grid-template-columns: 75px 1fr;
+  gap: 12px;
   align-items: baseline;
+  padding: 6px 0;
+  border-bottom: 1px solid rgba(128, 178, 216, 0.08);
 }
 
 .pt-formulas dt {
-  color: #7a95ad;
-  font-size: 0.6rem;
-  font-weight: 600;
+  color: #8aa5ba;
+  font-size: 0.58rem;
+  font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.1em;
 }
 
 .pt-formulas dd {
   margin: 0;
-  color: #b8c9d8;
-  font-size: 0.63rem;
-  line-height: 1.55;
-  font-weight: 400;
+  color: #c5d7e5;
+  font-size: 0.65rem;
+  line-height: 1.6;
+  font-weight: 500;
 }
 
 /* ========================================
@@ -895,11 +908,18 @@
   min-height: 128px;
   padding: 18px;
   overflow: hidden;
-  border: 1px solid rgba(var(--result-rgb), 0.24);
+  border: 1px solid rgba(var(--result-rgb), 0.28);
   border-radius: var(--pt-radius-md);
   background:
-    radial-gradient(circle at 100% 0, rgba(var(--result-rgb), 0.14) 0%, transparent 55%),
-    rgba(2, 13, 26, 0.72);
+    radial-gradient(circle at 100% 0, rgba(var(--result-rgb), 0.18) 0%, transparent 55%),
+    radial-gradient(circle at 0% 100%, rgba(var(--result-rgb), 0.08) 0%, transparent 50%),
+    linear-gradient(135deg, rgba(8, 24, 44, 0.85) 0%, rgba(4, 14, 28, 0.78) 100%);
+  backdrop-filter: blur(16px) saturate(120%);
+  -webkit-backdrop-filter: blur(16px) saturate(120%);
+  box-shadow:
+    0 8px 32px rgba(0, 0, 0, 0.35),
+    0 2px 8px rgba(0, 0, 0, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.04);
   transition:
     transform var(--pt-duration-normal) ease,
     border-color var(--pt-duration-normal) ease,
@@ -912,9 +932,10 @@
   bottom: 0;
   left: 0;
   width: 3px;
-  background: var(--result-accent);
+  background: linear-gradient(180deg, var(--result-accent) 0%, rgba(var(--result-rgb), 0.6) 100%);
   content: "";
   border-radius: 2px 0 0 2px;
+  box-shadow: 0 0 12px rgba(var(--result-rgb), 0.4);
 }
 
 .pt-result--green {
@@ -933,9 +954,12 @@
 }
 
 .pt-result:hover {
-  transform: translateY(-3px);
-  border-color: rgba(var(--result-rgb), 0.48);
-  box-shadow: 0 14px 36px rgba(var(--result-rgb), 0.15);
+  transform: translateY(-4px);
+  border-color: rgba(var(--result-rgb), 0.5);
+  box-shadow:
+    0 16px 48px rgba(var(--result-rgb), 0.2),
+    0 4px 12px rgba(0, 0, 0, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06);
 }
 
 .pt-result__top {
@@ -947,12 +971,14 @@
 .pt-result__icon {
   display: grid;
   place-items: center;
-  width: 28px;
-  height: 28px;
+  width: 30px;
+  height: 30px;
   border-radius: var(--pt-radius-sm);
   color: var(--result-accent);
-  background: rgba(var(--result-rgb), 0.12);
-  font-size: 0.9rem;
+  background: rgba(var(--result-rgb), 0.15);
+  font-size: 0.95rem;
+  box-shadow: 0 0 12px rgba(var(--result-rgb), 0.2);
+  border: 1px solid rgba(var(--result-rgb), 0.25);
 }
 
 .pt-result h3 {
@@ -964,13 +990,14 @@
 }
 
 .pt-result__value {
-  margin: 12px 0 6px;
+  margin: 14px 0 8px;
   color: #ffffff;
-  font-size: clamp(1.1rem, 1.5vw, 1.32rem);
+  font-size: clamp(1.15rem, 1.6vw, 1.4rem);
   font-weight: 600;
   overflow-wrap: anywhere;
   letter-spacing: -0.01em;
   line-height: 1.3;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
 }
 
 .pt-result__value span {
@@ -1116,17 +1143,6 @@
   z-index: 1;
 }
 
-/* Rotation Animation */
-@keyframes pt-rotate {
-  from {
-    transform: rotate(0deg);
-  }
-
-  to {
-    transform: rotate(360deg);
-  }
-}
-
 /* Glow Pulse Animation */
 @keyframes pt-glow-pulse {
 
@@ -1186,10 +1202,29 @@
   stroke: #4ade80;
 }
 
+.pt-power-particles {
+  fill: #67d8ff;
+  filter: drop-shadow(0 0 4px rgba(56, 199, 255, 0.9));
+  opacity: 0.82;
+  pointer-events: none;
+}
+
+.pt-power-particles circle {
+  transform-box: view-box;
+  will-change: transform;
+}
+
+#pt-shaft-body,
+#pt-load-rim,
+.pt-torque-arrow,
+.pt-power-flow {
+  transition: stroke-width 240ms ease, opacity 240ms ease, filter 240ms ease;
+}
+
 /* Stats */
 .pt-stats {
   display: grid;
-  grid-template-columns: repeat(5, 1fr);
+  grid-template-columns: repeat(4, 1fr);
   margin-top: 16px;
   padding-top: 16px;
   border-top: 1px solid rgba(128, 178, 216, 0.14);
@@ -1260,12 +1295,6 @@
   to {
     opacity: 1;
     transform: none;
-  }
-}
-
-@keyframes pt-shaft-rotate {
-  to {
-    transform: rotate(360deg);
   }
 }
 
@@ -1424,6 +1453,11 @@
 }
 
 @media print {
+  @page {
+    size: A4;
+    margin: 14mm;
+  }
+
   body.power-torque-page {
     color: #000;
     background: #fff;
@@ -1438,6 +1472,8 @@
   .pt-button-row,
   .pt-breadcrumb,
   .pt-panel--warning,
+  .pt-panel--calculator,
+  .pt-sticky>section:last-child,
   .pt-button {
     display: none !important;
   }
@@ -1445,6 +1481,14 @@
   .pt-workspace {
     margin-top: 0;
     padding: 0;
+  }
+
+  .pt-layout {
+    display: block;
+  }
+
+  .pt-panel {
+    margin-bottom: 8mm;
   }
 
   .pt-panel,
@@ -1538,6 +1582,10 @@
   .pt-drivetrain,
   .pt-load-rotor {
     animation: none;
+  }
+
+  .pt-power-particles {
+    display: none;
   }
 
   .power-torque-page * {

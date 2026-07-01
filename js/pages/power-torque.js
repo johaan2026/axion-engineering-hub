@@ -34,8 +34,10 @@ let animationFrameId = null;
 let drivetrainAngle = 0;
 let drivetrainLastTimestamp = null;
 let drivetrainRotors = [];
+let powerParticles = [];
+let powerParticlePhase = 0;
+let numberAnimations = [];
 const drivetrainSelector = ".pt-motor-rotor, .pt-coupling, .pt-shaft-keyway, .pt-load-rotor";
-const visualRpmScale = 0.04;
 const maximumVisualRpm = 120;
 const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
 
@@ -145,6 +147,7 @@ function calculate(input) {
 
   const angularVelocity = (2 * Math.PI * rpm) / 60;
   const usefulPowerW = powerW * (input.efficiency / 100);
+  const powerLossW = powerW - usefulPowerW;
   const torqueDisplayFactor = conversions[input.system].torqueFactor;
   return {
     solved,
@@ -156,9 +159,11 @@ function calculate(input) {
     rpm,
     angularVelocity,
     usefulPowerW,
+    powerLossW,
     displayPower: powerW / basePowerFactor,
     displayTorque: torqueNm / torqueDisplayFactor,
     displayUsefulPower: usefulPowerW / basePowerFactor,
+    displayPowerLoss: powerLossW / basePowerFactor,
     powerUnit: powerUnitLabels[input.powerUnit] || "kW",
     torqueUnit: conversions[input.system].torqueUnit,
     inputPowerUnit: input.powerUnit,
@@ -170,13 +175,13 @@ function fmt(value, digits = null) {
   return formatNumber(value, precision);
 }
 
-function renderMath(targetId, expression) {
+function renderMath(targetId, expression, fallback = "Engineering equation") {
   const target = $(targetId);
   if (!target) return;
   if (window.katex?.renderToString) {
     target.innerHTML = window.katex.renderToString(expression, { throwOnError: false, displayMode: false });
   } else {
-    target.textContent = expression;
+    target.textContent = fallback;
   }
 }
 
@@ -185,13 +190,7 @@ function animateNumber(element, target, digits) {
     element.textContent = fmt(target, digits);
     return;
   }
-  const started = performance.now();
-  const tick = (now) => {
-    const progress = Math.min((now - started) / 450, 1);
-    element.textContent = fmt(target * (1 - ((1 - progress) ** 3)), digits);
-    if (progress < 1) requestAnimationFrame(tick);
-  };
-  requestAnimationFrame(tick);
+  numberAnimations.push({ element, target, digits, started: performance.now() });
 }
 
 function updateDrivetrainAnimation(rpm) {
@@ -202,6 +201,7 @@ function updateDrivetrainAnimation(rpm) {
 
   stopDrivetrainAnimation();
   drivetrainRotors = Array.from(document.querySelectorAll(drivetrainSelector));
+  powerParticles = Array.from(document.querySelectorAll(".pt-power-particles circle"));
 
   if (!document.querySelector(".pt-motor-rotor")) {
     console.warn("[Power & Torque] Motor rotor element '.pt-motor-rotor' was not found; motor animation cannot start.");
@@ -215,6 +215,15 @@ function updateDrivetrainAnimation(rpm) {
   animationFrameId = requestAnimationFrame(animateDrivetrain);
 }
 
+function getVisualRpm(actualRpm) {
+  // Use square root scaling for smooth visual representation
+  // 0 RPM = stopped, 3000 RPM = maximum visual speed
+  const maxRpm = 3000;
+  if (actualRpm <= 0) return 0;
+  const normalized = Math.min(actualRpm / maxRpm, 1);
+  return maximumVisualRpm * Math.sqrt(normalized);
+}
+
 function stopDrivetrainAnimation() {
   if (animationFrameId) {
     cancelAnimationFrame(animationFrameId);
@@ -226,9 +235,15 @@ function stopDrivetrainAnimation() {
 function resetDrivetrainOrientation() {
   stopDrivetrainAnimation();
   drivetrainAngle = 0;
+  powerParticlePhase = 0;
+  numberAnimations = [];
   drivetrainRotors = Array.from(document.querySelectorAll(drivetrainSelector));
+  powerParticles = Array.from(document.querySelectorAll(".pt-power-particles circle"));
   drivetrainRotors.forEach((element) => {
     element.style.transform = "rotate(0deg)";
+  });
+  powerParticles.forEach((element) => {
+    element.style.transform = "translateX(0px)";
   });
 }
 
@@ -240,17 +255,34 @@ function animateDrivetrain(timestamp) {
 
   if (drivetrainLastTimestamp !== null) {
     const elapsedSeconds = Math.min((timestamp - drivetrainLastTimestamp) / 1000, 0.1);
-    const visualRpm = Math.min(targetRpm * visualRpmScale, maximumVisualRpm);
+    const visualRpm = getVisualRpm(targetRpm);
     drivetrainAngle = (drivetrainAngle + targetDirection * visualRpm * 6 * elapsedSeconds) % 360;
+
+    // Power flow particles - represent transmitted power
+    const particleSpeed = lastResult ? 28 + Math.min(92, 18 * Math.log10(1 + lastResult.powerW / 1000)) : 0;
+    powerParticlePhase = (powerParticlePhase + particleSpeed * elapsedSeconds) % 319;
   }
   drivetrainLastTimestamp = timestamp;
 
   const gaugeNeedle = $("pt-gauge-needle");
+  numberAnimations = numberAnimations.filter((animation) => {
+    const progress = Math.min((timestamp - animation.started) / 450, 1);
+    animation.element.textContent = fmt(animation.target * (1 - ((1 - progress) ** 3)), animation.digits);
+    return progress < 1;
+  });
 
+  // Rotate all drivetrain components
   drivetrainRotors.forEach((element) => {
     element.style.transform = `rotate(${drivetrainAngle}deg)`;
   });
 
+  // Animate power flow particles
+  powerParticles.forEach((element, index) => {
+    const offset = (powerParticlePhase + index * 79.75) % 319;
+    element.style.transform = `translateX(${offset}px)`;
+  });
+
+  // Update gauge needle
   if (gaugeNeedle) {
     const angle = Math.max(-110, Math.min(110, (currentRpm / 1800) * 110));
     gaugeNeedle.style.transform = `rotate(${currentDirection >= 0 ? angle : -angle}deg)`;
@@ -261,6 +293,47 @@ function animateDrivetrain(timestamp) {
 
 function resultCard(icon, title, value, unit, description, digits = 2, tone = "blue") {
   return `<article class="pt-result pt-result--${tone}"><div class="pt-result__top"><span class="pt-result__icon" aria-hidden="true">${icon}</span><h3>${title}</h3></div><p class="pt-result__value"><b data-result-number="${value}" data-digits="${digits}">${fmt(value, digits)}</b> <span>${unit}</span></p><p>${description}</p></article>`;
+}
+
+function updateMechanicalVisualization(result) {
+  // Torque intensity for visual effects (logarithmic scaling)
+  const torqueIntensity = Math.min(1, Math.log10(1 + result.torqueNm) / 4);
+  const powerIntensity = Math.min(1, Math.log10(1 + result.powerW / 100) / 3);
+
+  const torqueArrow = $("pt-torque-arrow");
+  const powerFlow = $("pt-power-flow");
+  const shaft = $("pt-shaft-body");
+  const loadRim = $("pt-load-rim");
+  const loadHub = $("pt-load-hub");
+
+  // Torque arrow - thicker for higher torque
+  if (torqueArrow) {
+    torqueArrow.style.strokeWidth = String(2.5 + torqueIntensity * 5);
+    torqueArrow.style.opacity = String(0.6 + torqueIntensity * 0.4);
+  }
+
+  // Power flow line - thicker for higher power
+  if (powerFlow) {
+    powerFlow.style.strokeWidth = String(2 + powerIntensity * 4);
+    powerFlow.style.opacity = String(0.5 + powerIntensity * 0.5);
+  }
+
+  // Shaft glow - stronger for higher torque
+  if (shaft) {
+    shaft.style.filter = torqueIntensity > 0.15 ? "url(#shaftGlow)" : "none";
+    shaft.style.opacity = String(0.82 + torqueIntensity * 0.18);
+  }
+
+  // Load rim - thicker stroke for higher torque
+  if (loadRim) {
+    loadRim.style.strokeWidth = String(2.5 + torqueIntensity * 3.5);
+    loadRim.style.filter = torqueIntensity > 0.3 ? "url(#machineGlow)" : "none";
+  }
+
+  // Load hub glow
+  if (loadHub) {
+    loadHub.style.filter = torqueIntensity > 0.4 ? "url(#shaftGlow)" : "none";
+  }
 }
 
 function renderResult(result) {
@@ -279,6 +352,7 @@ function renderResult(result) {
     resultCard("◴", "RPM", result.rpm, "rpm", "Calculated rotational speed.", getDisplayPrecision(), "orange"),
     resultCard("ω", "Angular velocity", result.angularVelocity, "rad/s", "Angular speed in SI units.", getDisplayPrecision(), "purple"),
     resultCard("⌁", "Mechanical power", result.displayUsefulPower, result.powerUnit, "Useful output after efficiency losses.", getDisplayPrecision(), "blue"),
+    resultCard("Δ", "Power loss", result.displayPowerLoss, result.powerUnit, "Power dissipated by drivetrain inefficiency.", getDisplayPrecision(), "orange"),
     resultCard("η", "Efficiency", result.efficiency, "%", "Selected drivetrain efficiency.", 2, "green"),
   ].join("");
 
@@ -299,18 +373,21 @@ function renderResult(result) {
   const resultCards = $("results-grid").querySelectorAll(".pt-result");
   resultCards.forEach((card, index) => {
     card.style.animationDelay = `${index * 60}ms`;
-    requestAnimationFrame(() => card.classList.add("is-visible"));
+    card.classList.add("is-visible");
   });
 
   $("results-grid").querySelectorAll("[data-result-number]").forEach((node) => {
     animateNumber(node, Number(node.dataset.resultNumber), Number(node.dataset.digits));
   });
   $("stat-direction").textContent = result.rpm >= 0 ? "Clockwise" : "Counter-Clockwise";
+  $("stat-status").textContent = "✓ Normal Operation";
   $("stat-rpm").textContent = `${fmt(result.rpm, 1)} rpm`;
+  $("stat-angular").textContent = `${fmt(result.angularVelocity)} rad/s`;
   $("stat-torque").textContent = `${fmt(result.displayTorque)} ${result.torqueUnit}`;
   $("stat-power").textContent = `${fmt(result.displayPower)} ${result.powerUnit}`;
   $("stat-efficiency").textContent = `${fmt(result.efficiency, 2)}%`;
 
+  updateMechanicalVisualization(result);
   updateDrivetrainAnimation(result.rpm);
   renderWarnings(result);
   renderExample(result);
@@ -353,29 +430,53 @@ function renderExample(result) {
     result.solved === "torque" ? `T = ${fmt(result.displayTorque)} ${result.torqueUnit}` : `T = ${fmt(result.torqueNm)} N·m`,
     result.solved === "rpm" ? `N = ${fmt(result.rpm, 1)} rpm` : `N = ${fmt(result.rpm, 1)} rpm`,
   ].join("; ");
-  renderMath("example-formula", content.formula);
-  renderMath("example-substitution", content.substitution);
-  renderMath("example-calculation", content.calculation);
-  renderMath("example-answer", content.answer);
+  const plain = {
+    power: {
+      formula: "P = (2πNT) / 60",
+      substitution: `P = (2π × ${fmt(result.rpm, 1)} × ${fmt(result.torqueNm)}) / 60`,
+      calculation: `ω = ${fmt(result.angularVelocity)} rad/s; P = ${fmt(result.powerW)} W`,
+      answer: `P = ${fmt(result.displayPower)} ${result.powerUnit}`,
+    },
+    torque: {
+      formula: "T = (60P) / (2πN)",
+      substitution: `T = (60 × ${fmt(result.powerW)}) / (2π × ${fmt(result.rpm, 1)})`,
+      calculation: `ω = ${fmt(result.angularVelocity)} rad/s; T = ${fmt(result.torqueNm)} N·m`,
+      answer: `T = ${fmt(result.displayTorque)} ${result.torqueUnit}`,
+    },
+    rpm: {
+      formula: "N = (60P) / (2πT)",
+      substitution: `N = (60 × ${fmt(result.powerW)}) / (2π × ${fmt(result.torqueNm)})`,
+      calculation: `N = ${fmt(result.rpm, 3)} revolutions per minute`,
+      answer: `N = ${fmt(result.rpm, 1)} rpm`,
+    },
+  }[result.solved];
+  renderMath("example-formula", content.formula, plain.formula);
+  renderMath("example-substitution", content.substitution, plain.substitution);
+  renderMath("example-calculation", content.calculation, plain.calculation);
+  renderMath("example-answer", content.answer, plain.answer);
 }
 
 function renderFormulaCards() {
-  renderMath("formula-power", "P = \\frac{2\\pi N T}{60}");
-  renderMath("formula-angular", "\\omega = \\frac{2\\pi N}{60}");
-  renderMath("formula-torque", "T = \\frac{60P}{2\\pi N}");
+  renderMath("formula-power", "P = \\frac{2\\pi N T}{60}", "P = (2πNT) / 60");
+  renderMath("formula-angular", "\\omega = \\frac{2\\pi N}{60}", "ω = (2πN) / 60");
+  renderMath("formula-torque", "T = \\frac{60P}{2\\pi N}", "T = (60P) / (2πN)");
 }
 
 function run(showMessage = false) {
   const input = values();
   if (!validate(input)) {
+    stopDrivetrainAnimation();
     lastResult = null;
     $("results-grid").innerHTML = "";
+    if ($("stat-status")) $("stat-status").textContent = "Check Inputs";
     return false;
   }
   const result = calculate(input);
   if (!result) {
+    stopDrivetrainAnimation();
     lastResult = null;
     $("results-grid").innerHTML = "";
+    if ($("stat-status")) $("stat-status").textContent = "Calculation Error";
     return false;
   }
   renderResult(result);
@@ -392,9 +493,7 @@ function convertUnitSystem() {
     $("torque").value = (torque * from.torqueFactor / to.torqueFactor).toFixed(4).replace(/0+$/, "").replace(/\.$/, "");
   }
   previousSystem = next;
-  if (lastResult) {
-    renderResult(lastResult);
-  }
+  run();
 }
 
 function handlePowerUnitChange() {
@@ -406,25 +505,60 @@ function handlePowerUnitChange() {
     $("power").value = (power * previousFactor / nextFactor).toFixed(4).replace(/0+$/, "").replace(/\.$/, "");
   }
   previousPowerUnit = next;
-  if (lastResult) {
-    renderResult(lastResult);
-  }
+  run();
 }
 
 function copyResults() {
   if (!lastResult) return warning("Enter two valid values before copying.");
+  const timestamp = new Date();
+  const input = values();
   const text = [
-    "Power & Torque Calculation",
+    "═══════════════════════════════════════════════════════════════",
+    "AXION ENGINEERING SUITE",
+    "Power & Torque - Engineering Calculation Report",
+    "═══════════════════════════════════════════════════════════════",
     "",
-    "Input:",
-    `RPM: ${fmt(lastResult.rpm, 1)}`,
-    `Torque: ${fmt(lastResult.displayTorque)} ${lastResult.torqueUnit}`,
+    "REPORT INFORMATION",
+    "───────────────────────────────────────────────────────────────",
+    `Generated:        ${timestamp.toLocaleString()}`,
+    `Calculator:       Power & Torque Calculator`,
+    `Version:          1.0`,
     "",
-    "Output:",
-    `Power: ${fmt(lastResult.displayPower)} ${lastResult.powerUnit}`,
+    "INPUT PARAMETERS",
+    "───────────────────────────────────────────────────────────────",
+    `Power:            ${input.power === null ? "Calculated" : `${fmt(input.power)} ${lastResult.powerUnit}`}`,
+    `Torque:           ${input.torque === null ? "Calculated" : `${fmt(input.torque)} ${lastResult.torqueUnit}`}`,
+    `RPM:              ${input.rpm === null ? "Calculated" : `${fmt(input.rpm, 1)} rpm`}`,
+    `Efficiency:       ${fmt(input.efficiency, 2)}%`,
+    `Unit System:      ${input.system === "metric" ? "SI (Metric)" : "Imperial (US)"}`,
+    "",
+    "CALCULATED RESULTS",
+    "───────────────────────────────────────────────────────────────",
+    `Primary Result:   ${fmt(lastResult.solved === "power" ? lastResult.displayPower : lastResult.solved === "torque" ? lastResult.displayTorque : lastResult.rpm)} ${lastResult.solved === "power" ? lastResult.powerUnit : lastResult.solved === "torque" ? lastResult.torqueUnit : "rpm"}`,
+    `Power:            ${fmt(lastResult.displayPower)} ${lastResult.powerUnit}`,
+    `Torque:           ${fmt(lastResult.displayTorque)} ${lastResult.torqueUnit}`,
+    `RPM:              ${fmt(lastResult.rpm, 1)} rpm`,
+    `Angular Velocity: ${fmt(lastResult.angularVelocity)} rad/s`,
     `Mechanical Power: ${fmt(lastResult.displayUsefulPower)} ${lastResult.powerUnit}`,
+    `Power Loss:       ${fmt(lastResult.displayPowerLoss)} ${lastResult.powerUnit}`,
+    `Efficiency:       ${fmt(lastResult.efficiency, 2)}%`,
+    "",
+    "FORMULA USED",
+    "───────────────────────────────────────────────────────────────",
+    lastResult.solved === "power" ? "P = (2πNT) / 60" : lastResult.solved === "torque" ? "T = (60P) / (2πN)" : "N = (60P) / (2πT)",
+    "",
+    "ENGINEERING NOTES",
+    "───────────────────────────────────────────────────────────────",
+    "• Verify service factor, duty cycle, and thermal limits",
+    "• Check shaft stress, coupling capacity, and bearing ratings",
+    "• Confirm manufacturer specifications before implementation",
+    "• Consider safety factors for critical applications",
+    "",
+    "═══════════════════════════════════════════════════════════════",
+    "Report generated by Axion Engineering Suite",
+    "═══════════════════════════════════════════════════════════════",
   ].join("\n");
-  copyToClipboard(text).then(() => success("Results copied to clipboard.")).catch(() => error("Clipboard access is unavailable."));
+  copyToClipboard(text).then(() => success("Professional report copied to clipboard.")).catch(() => error("Clipboard access is unavailable."));
 }
 
 function saveCalculation() {
@@ -454,13 +588,18 @@ function initFavourite() {
 function exportCsv() {
   if (!lastResult) return warning("Enter two valid values before exporting.");
   const rows = [
-    ["Metric", "Value", "Unit"],
+    ["Axion Engineering Suite - Power & Torque Report", "", ""],
+    ["Generated", new Date().toISOString(), ""],
+    ["Solved quantity", lastResult.solvedLabel, ""],
+    ["Parameter", "Value", "Unit"],
     ["Power", lastResult.displayPower, lastResult.powerUnit],
     ["Torque", lastResult.displayTorque, lastResult.torqueUnit],
     ["RPM", lastResult.rpm, "rpm"],
     ["Angular Velocity", lastResult.angularVelocity, "rad/s"],
     ["Mechanical Power", lastResult.displayUsefulPower, lastResult.powerUnit],
+    ["Power Loss", lastResult.displayPowerLoss, lastResult.powerUnit],
     ["Efficiency", lastResult.efficiency, "%"],
+    ["Formula Used", lastResult.solved === "power" ? "P = (2*pi*N*T)/60" : lastResult.solved === "torque" ? "T = (60*P)/(2*pi*N)" : "N = (60*P)/(2*pi*T)", ""],
   ];
   const csv = rows.map((row) => row.map((cell) => `"${String(cell).replaceAll('"', '""')}"`).join(",")).join("\r\n");
   exporter.exportCsv(csv, { filename: "power-torque-results.csv" }).then((file) => {
@@ -508,6 +647,7 @@ async function exportPdf() {
       ["RPM", `${fmt(lastResult.rpm, 1)} rpm`],
       ["Angular velocity", `${fmt(lastResult.angularVelocity)} rad/s`],
       ["Mechanical power", `${fmt(lastResult.displayUsefulPower)} ${lastResult.powerUnit}`],
+      ["Power loss", `${fmt(lastResult.displayPowerLoss)} ${lastResult.powerUnit}`],
       ["Efficiency", `${fmt(lastResult.efficiency, 2)}%`],
     ];
     const formulas = [
@@ -572,8 +712,16 @@ async function exportPdf() {
     table(inputs);
     sectionTitle("Calculated results");
     table(results, true);
+    doc.addPage();
+    y = 50;
     sectionTitle("Engineering equations");
     table(formulas.map(([label, equation]) => [label, equation]));
+    sectionTitle("Worked example");
+    table([
+      ["Given", `P = ${fmt(lastResult.powerW)} W; T = ${fmt(lastResult.torqueNm)} N m; N = ${fmt(lastResult.rpm, 1)} rpm`],
+      ["Formula used", formulas.find(([label]) => label === lastResult.solvedLabel)?.[1] || formulas[0][1]],
+      ["Final answer", `${lastResult.solvedLabel} = ${fmt(lastResult.solved === "power" ? lastResult.displayPower : lastResult.solved === "torque" ? lastResult.displayTorque : lastResult.rpm)} ${lastResult.solved === "power" ? lastResult.powerUnit : lastResult.solved === "torque" ? lastResult.torqueUnit : "rpm"}`],
+    ]);
     sectionTitle("Engineering notes");
     doc.setFont("helvetica", "normal");
     doc.setFontSize(8.5);
