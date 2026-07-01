@@ -31,6 +31,8 @@ let targetRpm = 0;
 let currentDirection = 1;
 let targetDirection = 1;
 let animationFrameId = null;
+let drivetrainAngle = 0;
+let drivetrainLastTimestamp = null;
 const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
 
 function unitSystem() {
@@ -191,6 +193,10 @@ function animateNumber(element, target, digits) {
 function updateDrivetrainAnimation(rpm) {
   targetRpm = Math.abs(rpm);
   targetDirection = rpm >= 0 ? 1 : -1;
+  currentRpm = targetRpm;
+  currentDirection = targetDirection;
+
+  stopDrivetrainAnimation();
 
   if (prefersReducedMotion.matches) {
     document.querySelectorAll(".pt-motor-rotor, .pt-coupling, .pt-shaft-keyway, .pt-load-rotor").forEach((element) => {
@@ -199,9 +205,8 @@ function updateDrivetrainAnimation(rpm) {
     return;
   }
 
-  if (!animationFrameId) {
-    animateDrivetrain();
-  }
+  drivetrainLastTimestamp = null;
+  animationFrameId = requestAnimationFrame(animateDrivetrain);
 }
 
 function stopDrivetrainAnimation() {
@@ -209,58 +214,26 @@ function stopDrivetrainAnimation() {
     cancelAnimationFrame(animationFrameId);
     animationFrameId = null;
   }
+  drivetrainLastTimestamp = null;
 }
 
-function animateDrivetrain() {
-  const rpmDiff = targetRpm - currentRpm;
-  if (Math.abs(rpmDiff) > 0.1) {
-    currentRpm += rpmDiff * 0.05;
-  } else {
-    currentRpm = targetRpm;
+function animateDrivetrain(timestamp) {
+  if (drivetrainLastTimestamp !== null) {
+    const elapsedSeconds = Math.min((timestamp - drivetrainLastTimestamp) / 1000, 0.1);
+    drivetrainAngle = (drivetrainAngle + targetDirection * targetRpm * 6 * elapsedSeconds) % 360;
   }
+  drivetrainLastTimestamp = timestamp;
 
-  if (currentDirection !== targetDirection) {
-    currentDirection = targetDirection;
-  }
-
-  const degreesPerSecond = (currentRpm / 60) * 360;
-  const degreesPerFrame = (degreesPerSecond / 60) * currentDirection;
-
-  const motorRotor = document.querySelector(".pt-motor-rotor");
-  const coupling = document.querySelector(".pt-coupling");
-  const keyway = document.querySelector(".pt-shaft-keyway");
-  const loadRotor = document.querySelector(".pt-load-rotor");
+  const rigidRotors = document.querySelectorAll(".pt-motor-rotor, .pt-coupling, .pt-shaft-keyway, .pt-load-rotor");
   const gaugeNeedle = $("pt-gauge-needle");
-  const torqueArrow = $("pt-torque-arrow");
-  const powerFlow = $("pt-power-flow");
 
-  if (motorRotor) {
-    const currentAngle = Number.parseFloat(motorRotor.style.transform?.match(/rotate\(([^)]+)deg\)/)?.[1] || 0) + degreesPerFrame;
-    motorRotor.style.transform = `rotate(${currentAngle}deg)`;
-  }
-  if (coupling) {
-    const currentAngle = Number.parseFloat(coupling.style.transform?.match(/rotate\(([^)]+)deg\)/)?.[1] || 0) + degreesPerFrame;
-    coupling.style.transform = `rotate(${currentAngle}deg)`;
-  }
-  if (keyway) {
-    const currentAngle = Number.parseFloat(keyway.style.transform?.match(/rotate\(([^)]+)deg\)/)?.[1] || 0) + degreesPerFrame;
-    keyway.style.transform = `rotate(${currentAngle}deg)`;
-  }
-  if (loadRotor) {
-    const currentAngle = Number.parseFloat(loadRotor.style.transform?.match(/rotate\(([^)]+)deg\)/)?.[1] || 0) + degreesPerFrame;
-    loadRotor.style.transform = `rotate(${currentAngle}deg)`;
-  }
+  rigidRotors.forEach((element) => {
+    element.style.transform = `rotate(${drivetrainAngle}deg)`;
+  });
+
   if (gaugeNeedle) {
     const angle = Math.max(-110, Math.min(110, (currentRpm / 1800) * 110));
     gaugeNeedle.style.transform = `rotate(${currentDirection >= 0 ? angle : -angle}deg)`;
-  }
-  if (torqueArrow) {
-    const progress = Math.min(1, currentRpm / 3000);
-    torqueArrow.style.strokeDashoffset = `${12 - progress * 6}`;
-  }
-  if (powerFlow) {
-    const progress = Math.min(1, currentRpm / 3000);
-    powerFlow.style.strokeDashoffset = `${-12 + progress * 6}`;
   }
 
   animationFrameId = requestAnimationFrame(animateDrivetrain);

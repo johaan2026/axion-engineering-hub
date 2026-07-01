@@ -1061,19 +1061,16 @@
   stroke-linecap: round;
 }
 
-.pt-shaft-highlight {
-  animation: pt-shaft-dash 1s linear infinite;
-}
-
 .pt-shaft-keyway {
   transform-origin: 344px 130px;
-  transform-box: fill-box;
+  transform-box: view-box;
   /* Animation controlled by JavaScript for dynamic RPM */
 }
 
 /* Motor Rotor */
 .pt-motor-rotor {
   transform-origin: 192px 130px;
+  transform-box: view-box;
   /* Animation controlled by JavaScript for dynamic RPM */
 }
 
@@ -1084,14 +1081,23 @@
 
 /* Coupling */
 .pt-coupling {
-  transform-origin: 243px 130px;
+  transform-origin: 260.5px 130px;
+  transform-box: view-box;
   /* Animation controlled by JavaScript for dynamic RPM */
 }
 
 /* Load Rotor */
 .pt-load-rotor {
   transform-origin: 493px 130px;
+  transform-box: view-box;
   /* Animation controlled by JavaScript for dynamic RPM */
+}
+
+.pt-motor-rotor,
+.pt-coupling,
+.pt-shaft-keyway,
+.pt-load-rotor {
+  will-change: transform;
 }
 
 /* Machine Glow Effect */
@@ -1133,14 +1139,6 @@
     opacity: 0.6;
   }
 }
-
-/* Shaft Dash Animation - simulates rotation via moving highlight */
-@keyframes pt-shaft-dash {
-  to {
-    stroke-dashoffset: -50;
-  }
-}
-
 
 /* Visualization Enhancements */
 .pt-gauge__ring {
