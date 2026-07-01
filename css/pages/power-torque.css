@@ -432,6 +432,17 @@
     background var(--pt-duration-fast) ease;
 }
 
+.pt-input select {
+  border: 0;
+  border-left: 1px solid rgba(134, 172, 202, 0.2);
+  color: #e2f1ff;
+  background: rgba(4, 17, 32, 0.9);
+  font: 500 0.72rem "Poppins", system-ui, sans-serif;
+  padding: 0 14px;
+  min-height: 100%;
+  appearance: none;
+}
+
 .pt-input:focus-within {
   border-color: var(--pt-blue);
   background: rgba(4, 17, 32, 0.85);
@@ -587,9 +598,12 @@
   padding-bottom: 18px;
   border-bottom: 1px solid rgba(128, 178, 216, 0.12);
   color: #ffffff;
-  font: italic 1.9rem "Cambria Math", "STIX Two Math", Georgia, serif;
   text-align: center;
   letter-spacing: 0.02em;
+}
+
+.pt-equation .katex {
+  font-size: 1.1rem;
 }
 
 .pt-fraction {
@@ -1065,7 +1079,7 @@
 
 /* Shaft and Coupling */
 .pt-drivetrain {
-  /* Individual components rotate separately; no group-level rotation */
+  isolation: isolate;
 }
 
 /* Coupling */
@@ -1127,6 +1141,52 @@
   }
 }
 
+
+/* Visualization Enhancements */
+.pt-gauge__ring {
+  fill: none;
+  stroke: rgba(56, 199, 255, 0.25);
+  stroke-width: 8;
+}
+
+.pt-gauge__core {
+  fill: rgba(2, 14, 28, 0.95);
+  stroke: rgba(56, 199, 255, 0.35);
+  stroke-width: 2;
+}
+
+.pt-gauge__needle {
+  stroke: #ffca28;
+  stroke-width: 4;
+  stroke-linecap: round;
+  transform-origin: 108px 170px;
+  transform-box: fill-box;
+}
+
+.pt-gauge__needle--base {
+  stroke: rgba(255, 255, 255, 0.25);
+  stroke-width: 2;
+  transform: rotate(0deg);
+}
+
+.pt-torque-arrow,
+.pt-power-flow {
+  fill: none;
+  stroke: #7dd9ff;
+  stroke-width: 3;
+  stroke-linecap: round;
+  stroke-dasharray: 8 8;
+  opacity: 0.85;
+}
+
+.pt-torque-arrow {
+  stroke: #fbbf24;
+  stroke-width: 4;
+}
+
+.pt-power-flow {
+  stroke: #4ade80;
+}
 
 /* Stats */
 .pt-stats {
@@ -1362,6 +1422,47 @@
 
   .pt-results-grid {
     grid-template-columns: 1fr;
+  }
+}
+
+@media print {
+  body.power-torque-page {
+    color: #000;
+    background: #fff;
+  }
+
+  .power-torque-page::before,
+  .power-torque-page::after,
+  #site-header,
+  #site-footer,
+  .pt-hero,
+  .pt-actions,
+  .pt-button-row,
+  .pt-breadcrumb,
+  .pt-panel--warning,
+  .pt-button {
+    display: none !important;
+  }
+
+  .pt-workspace {
+    margin-top: 0;
+    padding: 0;
+  }
+
+  .pt-panel,
+  .pt-result,
+  .pt-note,
+  .pt-example article,
+  .pt-formulas article {
+    color: #000;
+    background: #fff !important;
+    box-shadow: none !important;
+    border-color: #d0d7de !important;
+  }
+
+  .pt-machine,
+  .pt-stats {
+    break-inside: avoid;
   }
 }
 

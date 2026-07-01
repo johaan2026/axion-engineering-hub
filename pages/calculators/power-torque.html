@@ -11,8 +11,10 @@
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="../../css/main.css" />
   <link rel="stylesheet" href="../../css/pages/power-torque.css" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css" crossorigin="anonymous" />
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" crossorigin="anonymous"
     referrerpolicy="no-referrer"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js" crossorigin="anonymous"></script>
 </head>
 
 <body data-page="power-torque" class="app-shell power-torque-page">
@@ -57,8 +59,15 @@
               <div class="pt-form-grid">
                 <div class="pt-field">
                   <label for="power">Power <small id="power-symbol">(P)</small></label>
-                  <div class="pt-input"><input id="power" type="number" min="0" step="any" value="15"
-                      inputmode="decimal" /><span id="power-unit">kW</span></div>
+                  <div class="pt-input">
+                    <input id="power" type="number" min="0" step="any" value="15" inputmode="decimal" />
+                    <select id="power-unit-select" aria-label="Power unit">
+                      <option value="w">W</option>
+                      <option value="kw" selected>kW</option>
+                      <option value="hp-metric">HP (metric)</option>
+                      <option value="hp-mech">HP (mechanical)</option>
+                    </select>
+                  </div>
                   <p class="pt-error" id="power-error" aria-live="polite"></p>
                 </div>
                 <div class="pt-field">
@@ -108,7 +117,7 @@
             </div>
             <div class="pt-formulas">
               <article>
-                <p class="pt-equation">P = τω</p>
+                <div class="pt-equation" id="formula-power"></div>
                 <dl>
                   <div>
                     <dt>Variables</dt>
@@ -125,7 +134,7 @@
                 </dl>
               </article>
               <article>
-                <p class="pt-equation">ω = <span class="pt-fraction"><span>2πN</span><span>60</span></span></p>
+                <div class="pt-equation" id="formula-angular"></div>
                 <dl>
                   <div>
                     <dt>Variables</dt>
@@ -142,7 +151,7 @@
                 </dl>
               </article>
               <article>
-                <p class="pt-equation">τ = <span class="pt-fraction"><span>P</span><span>ω</span></span></p>
+                <div class="pt-equation" id="formula-torque"></div>
                 <dl>
                   <div>
                     <dt>Variables</dt>
@@ -352,6 +361,15 @@
                       opacity=".5" />
                   </g>
                 </g>
+                <g class="pt-gauge">
+                  <circle cx="108" cy="170" r="40" class="pt-gauge__ring" />
+                  <circle cx="108" cy="170" r="28" class="pt-gauge__core" />
+                  <line id="pt-gauge-needle" x1="108" y1="170" x2="108" y2="136" class="pt-gauge__needle" />
+                  <line x1="108" y1="170" x2="108" y2="132" class="pt-gauge__needle pt-gauge__needle--base" />
+                  <text x="108" y="204" text-anchor="middle">RPM</text>
+                </g>
+                <path id="pt-torque-arrow" class="pt-torque-arrow" d="M250 92C270 92 284 92 300 92" />
+                <path id="pt-power-flow" class="pt-power-flow" d="M214 82C245 82 260 82 292 82" />
                 <text x="105" y="38">MOTOR</text><text x="258" y="188">COUPLING</text><text x="398"
                   y="188">SHAFT</text><text x="536" y="38">LOAD</text>
               </svg>
