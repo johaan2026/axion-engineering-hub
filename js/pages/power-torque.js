@@ -3,6 +3,7 @@ import { success, error, warning } from "../framework/notifications.js";
 import { addCalculationHistory, getFavouriteCalculators, recordRecentCalculator, toggleFavouriteCalculator, getUserSettings } from "../framework/storage.js";
 import { copyToClipboard, downloadFile, formatNumber } from "../framework/utilities.js";
 import { getCalculatorById } from "../data/calculators.js";
+import { initPowerVisualization, updatePowerVisualization, destroyPowerVisualization } from "../visualizations/power-torque-visualization.js";
 
 const exporter = new ExportService();
 const $ = (id) => document.getElementById(id);
@@ -199,33 +200,23 @@ function animateNumber(element, target, digits) {
 }
 
 function updateDrivetrainAnimation(rpm) {
-  targetRpm = Math.abs(rpm);
-  targetDirection = rpm >= 0 ? 1 : -1;
-  currentDirection = targetDirection;
-
-  if (!motorRotorElement) {
-    motorRotorElement = document.getElementById("pt-motor-rotor");
-  }
-  if (!drivetrainElement) {
-    drivetrainElement = document.getElementById("pt-drivetrain");
-  }
-
-  if (!motorRotorElement || !drivetrainElement) {
-    console.warn("[Power & Torque] SVG animation elements were not found; motor animation cannot start.");
+  if (!Number.isFinite(rpm) || rpm <= 0) {
+    updatePowerVisualization(null);
     return;
   }
 
-  if (prefersReducedMotion.matches || document.hidden) {
-    stopDrivetrainAnimation();
-    return;
-  }
-
-  stopDrivetrainAnimation();
-  visualRpmTransitionFrom = visualRpm;
-  visualRpmTransitionTo = getVisualRpm(targetRpm);
-  visualRpmTransitionStart = performance.now();
-  animationLastTimestamp = null;
-  animationFrameId = requestAnimationFrame(animateDrivetrain);
+  const data = {
+    rpm: Math.abs(rpm),
+    angularVelocity: (2 * Math.PI * Math.abs(rpm)) / 60,
+    torqueNm: lastResult?.torqueNm ?? 0,
+    powerW: lastResult?.powerW ?? 0,
+    efficiency: lastResult?.efficiency ?? 100,
+    displayPower: lastResult?.displayPower ?? 0,
+    displayTorque: lastResult?.displayTorque ?? 0,
+    torqueUnit: lastResult?.torqueUnit ?? "N·m",
+    powerUnit: lastResult?.powerUnit ?? "kW",
+  };
+  updatePowerVisualization(data);
 }
 
 function getVisualRpm(actualRpm) {
@@ -239,35 +230,15 @@ function getVisualRpm(actualRpm) {
 }
 
 function stopDrivetrainAnimation() {
-  if (animationFrameId) {
-    cancelAnimationFrame(animationFrameId);
-    animationFrameId = null;
-  }
-  animationLastTimestamp = null;
+  updatePowerVisualization(null);
 }
 
 function updateSvgTransforms() {
-  if (motorRotorElement) {
-    motorRotorElement.setAttribute("transform", `rotate(${motorRotorAngle} ${motorRotorOrigin.x} ${motorRotorOrigin.y})`);
-  }
-  if (drivetrainElement) {
-    drivetrainElement.setAttribute("transform", `rotate(${drivetrainAngle} ${drivetrainOrigin.x} ${drivetrainOrigin.y})`);
-  }
+  updatePowerVisualization(lastResult);
 }
 
 function resetDrivetrainOrientation() {
-  stopDrivetrainAnimation();
-  motorRotorAngle = 0;
-  drivetrainAngle = 0;
-  visualRpm = 0;
-  currentRpm = 0;
-  targetRpm = 0;
-  currentDirection = 1;
-  targetDirection = 1;
-  numberAnimations = [];
-  motorRotorElement = document.getElementById("pt-motor-rotor");
-  drivetrainElement = document.getElementById("pt-drivetrain");
-  updateSvgTransforms();
+  updatePowerVisualization(null);
 }
 
 function animateDrivetrain(timestamp) {
@@ -308,39 +279,7 @@ function resultCard(icon, title, value, unit, description, digits = 2, tone = "b
 }
 
 function updateMechanicalVisualization(result) {
-  const torqueIntensity = Math.min(1, Math.log10(1 + result.torqueNm) / 4);
-  const powerIntensity = Math.min(1, Math.log10(1 + result.powerW / 100) / 3);
-
-  const torqueArrow = $("pt-torque-arrow");
-  const powerFlow = $("pt-power-flow");
-  const shaft = $("pt-shaft-body");
-  const loadRim = $("pt-load-rim");
-  const loadHub = $("pt-load-hub");
-
-  if (torqueArrow) {
-    torqueArrow.style.strokeWidth = String(2.5 + torqueIntensity * 5.5);
-    torqueArrow.style.opacity = String(0.6 + torqueIntensity * 0.4);
-  }
-
-  if (powerFlow) {
-    powerFlow.style.strokeWidth = String(2 + powerIntensity * 4);
-    powerFlow.style.opacity = String(0.5 + powerIntensity * 0.5);
-  }
-
-  if (shaft) {
-    shaft.style.filter = torqueIntensity > 0.15 ? "url(#shaftGlow)" : "none";
-    shaft.style.opacity = String(0.82 + torqueIntensity * 0.18);
-  }
-
-  if (loadRim) {
-    loadRim.style.strokeWidth = String(2.5 + torqueIntensity * 3.5);
-    loadRim.style.filter = torqueIntensity > 0.3 ? "url(#machineGlow)" : "none";
-  }
-
-  if (loadHub) {
-    loadHub.style.filter = torqueIntensity > 0.4 ? "url(#shaftGlow)" : "none";
-    loadHub.style.opacity = String(0.8 + torqueIntensity * 0.2);
-  }
+  updatePowerVisualization(result);
 }
 
 function renderResult(result) {
@@ -387,12 +326,6 @@ function renderResult(result) {
     animateNumber(node, Number(node.dataset.resultNumber), Number(node.dataset.digits));
   });
   $("stat-direction").textContent = result.rpm >= 0 ? "Clockwise" : "Counter-Clockwise";
-  $("stat-status").textContent = "✓ Normal Operation";
-  $("stat-rpm").textContent = `${fmt(result.rpm, 1)} rpm`;
-  $("stat-angular").textContent = `${fmt(result.angularVelocity)} rad/s`;
-  $("stat-torque").textContent = `${fmt(result.displayTorque)} ${result.torqueUnit}`;
-  $("stat-power").textContent = `${fmt(result.displayPower)} ${result.powerUnit}`;
-  $("stat-efficiency").textContent = `${fmt(result.efficiency, 2)}%`;
 
   updateMechanicalVisualization(result);
   updateDrivetrainAnimation(result.rpm);
@@ -807,8 +740,12 @@ export function init() {
       updateDrivetrainAnimation(lastResult.rpm);
     }
   });
-  window.addEventListener("pagehide", stopDrivetrainAnimation);
+  window.addEventListener("pagehide", destroyPowerVisualization);
 
+  const svg = document.querySelector(".pt-machine");
+  if (svg) {
+    initPowerVisualization(svg);
+  }
   initFavourite();
   run();
 }
