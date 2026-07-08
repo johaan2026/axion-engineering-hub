@@ -3,7 +3,6 @@ import { success, error, warning } from "../framework/notifications.js";
 import { addCalculationHistory, getFavouriteCalculators, recordRecentCalculator, toggleFavouriteCalculator, getUserSettings } from "../framework/storage.js";
 import { copyToClipboard, downloadFile, formatNumber } from "../framework/utilities.js";
 import { getCalculatorById } from "../data/calculators.js";
-import { initPowerVisualization, updatePowerVisualization, destroyPowerVisualization } from "../visualizations/power-torque-visualization.js";
 
 const exporter = new ExportService();
 const $ = (id) => document.getElementById(id);
@@ -27,25 +26,8 @@ const conversions = {
 let lastResult = null;
 let previousSystem = "metric";
 let previousPowerUnit = "kw";
-let currentRpm = 0;
-let targetRpm = 0;
-let currentDirection = 1;
-let targetDirection = 1;
-let animationFrameId = null;
-let motorRotorAngle = 0;
-let drivetrainAngle = 0;
-let animationLastTimestamp = null;
-let motorRotorElement = null;
-let drivetrainElement = null;
-let visualRpm = 0;
-let visualRpmTransitionStart = 0;
-let visualRpmTransitionFrom = 0;
-let visualRpmTransitionTo = 0;
-let visualRpmTransitionDuration = 300;
 let numberAnimations = [];
 const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
-const motorRotorOrigin = { x: 192, y: 130 };
-const drivetrainOrigin = { x: 344, y: 130 };
 
 function unitSystem() {
   return document.querySelector('input[name="unit-system"]:checked')?.value || "metric";
@@ -199,87 +181,9 @@ function animateNumber(element, target, digits) {
   numberAnimations.push({ element, target, digits, started: performance.now() });
 }
 
-function updateDrivetrainAnimation(rpm) {
-  if (!Number.isFinite(rpm) || rpm <= 0) {
-    updatePowerVisualization(null);
-    return;
-  }
-
-  const data = {
-    rpm: Math.abs(rpm),
-    angularVelocity: (2 * Math.PI * Math.abs(rpm)) / 60,
-    torqueNm: lastResult?.torqueNm ?? 0,
-    powerW: lastResult?.powerW ?? 0,
-    efficiency: lastResult?.efficiency ?? 100,
-    displayPower: lastResult?.displayPower ?? 0,
-    displayTorque: lastResult?.displayTorque ?? 0,
-    torqueUnit: lastResult?.torqueUnit ?? "N·m",
-    powerUnit: lastResult?.powerUnit ?? "kW",
-  };
-  updatePowerVisualization(data);
-}
-
-function getVisualRpm(actualRpm) {
-  if (actualRpm <= 0) return 0;
-  const cappedRpm = Math.min(actualRpm, 6000);
-  if (cappedRpm <= 30) return cappedRpm * 0.35;
-  if (cappedRpm <= 300) return 10.5 + (cappedRpm - 30) * 0.09;
-  if (cappedRpm <= 1750) return 34.5 + (cappedRpm - 300) * 0.1;
-  if (cappedRpm <= 3000) return 180 + (cappedRpm - 1750) * 0.12;
-  return Math.min(380, 320 + (cappedRpm - 3000) * 0.02);
-}
-
-function stopDrivetrainAnimation() {
-  updatePowerVisualization(null);
-}
-
-function updateSvgTransforms() {
-  updatePowerVisualization(lastResult);
-}
-
-function resetDrivetrainOrientation() {
-  updatePowerVisualization(null);
-}
-
-function animateDrivetrain(timestamp) {
-  if (document.hidden || prefersReducedMotion.matches) {
-    stopDrivetrainAnimation();
-    return;
-  }
-
-  if (animationLastTimestamp === null) {
-    animationLastTimestamp = timestamp;
-    visualRpmTransitionStart = timestamp;
-  }
-
-  const elapsedSeconds = Math.min((timestamp - animationLastTimestamp) / 1000, 0.05);
-  animationLastTimestamp = timestamp;
-
-  const transitionProgress = Math.min((timestamp - visualRpmTransitionStart) / visualRpmTransitionDuration, 1);
-  const easedProgress = transitionProgress < 1 ? 0.5 - 0.5 * Math.cos(Math.PI * transitionProgress) : 1;
-  visualRpm = visualRpmTransitionFrom + (visualRpmTransitionTo - visualRpmTransitionFrom) * easedProgress;
-
-  const angularVelocity = currentDirection * visualRpm * 6;
-  motorRotorAngle = (motorRotorAngle + angularVelocity * elapsedSeconds) % 360;
-  drivetrainAngle = (drivetrainAngle + angularVelocity * elapsedSeconds) % 360;
-
-  numberAnimations = numberAnimations.filter((animation) => {
-    const progress = Math.min((timestamp - animation.started) / 450, 1);
-    animation.element.textContent = fmt(animation.target * (1 - ((1 - progress) ** 3)), animation.digits);
-    return progress < 1;
-  });
-
-  updateSvgTransforms();
-
-  animationFrameId = requestAnimationFrame(animateDrivetrain);
-}
 
 function resultCard(icon, title, value, unit, description, digits = 2, tone = "blue") {
   return `<article class="pt-result pt-result--${tone}"><div class="pt-result__top"><span class="pt-result__icon" aria-hidden="true">${icon}</span><h3>${title}</h3></div><p class="pt-result__value"><b data-result-number="${value}" data-digits="${digits}">${fmt(value, digits)}</b> <span>${unit}</span></p><p>${description}</p></article>`;
-}
-
-function updateMechanicalVisualization(result) {
-  updatePowerVisualization(result);
 }
 
 function renderResult(result) {
@@ -327,8 +231,6 @@ function renderResult(result) {
   });
   $("stat-direction").textContent = result.rpm >= 0 ? "Clockwise" : "Counter-Clockwise";
 
-  updateMechanicalVisualization(result);
-  updateDrivetrainAnimation(result.rpm);
   renderWarnings(result);
   renderExample(result);
 }
@@ -405,7 +307,6 @@ function renderFormulaCards() {
 function run(showMessage = false) {
   const input = values();
   if (!validate(input)) {
-    stopDrivetrainAnimation();
     lastResult = null;
     $("results-grid").innerHTML = "";
     if ($("stat-status")) $("stat-status").textContent = "Check Inputs";
@@ -413,7 +314,6 @@ function run(showMessage = false) {
   }
   const result = calculate(input);
   if (!result) {
-    stopDrivetrainAnimation();
     lastResult = null;
     $("results-grid").innerHTML = "";
     if ($("stat-status")) $("stat-status").textContent = "Calculation Error";
@@ -568,117 +468,322 @@ async function exportPdf() {
     if (!jsPDF) throw new Error("PDF library is unavailable.");
 
     const doc = new jsPDF({ unit: "pt", format: "a4" });
-    const width = doc.internal.pageSize.getWidth();
-    const height = doc.internal.pageSize.getHeight();
-    const margin = 42;
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const pageHeight = doc.internal.pageSize.getHeight();
+    const margin = 50;
+    const contentWidth = pageWidth - (margin * 2);
     const generatedAt = new Date();
+
+    // Sanitize text for PDF compatibility (replace Unicode with ASCII)
+    const sanitize = (text) => {
+      return String(text)
+        .replace(/π/g, "pi")
+        .replace(/ω/g, "omega")
+        .replace(/×/g, "x")
+        .replace(/÷/g, "/")
+        .replace(/²/g, "2")
+        .replace(/³/g, "3")
+        .replace(/°/g, "deg");
+    };
+
+    // Helper to ensure finite numbers
+    const safeNumber = (value, defaultValue = 0) => {
+      const num = Number(value);
+      return Number.isFinite(num) ? num : defaultValue;
+    };
+
     const inputs = [
-      ["Power", input.power === null ? "Calculated" : `${fmt(input.power)} ${lastResult.powerUnit}`],
-      ["Torque", input.torque === null ? "Calculated" : `${fmt(input.torque)} ${lastResult.torqueUnit}`],
-      ["Rotational speed", input.rpm === null ? "Calculated" : `${fmt(input.rpm, 1)} rpm`],
-      ["Efficiency", `${fmt(input.efficiency, 2)}%`],
-      ["Unit system", input.system === "metric" ? "SI (Metric)" : "Imperial (US)"],
-      ["Power unit", powerUnitLabels[input.powerUnit] || "kW"],
+      ["Power", input.power === null ? "Calculated" : `${sanitize(fmt(input.power))} ${sanitize(lastResult.powerUnit)}`],
+      ["Torque", input.torque === null ? "Calculated" : `${sanitize(fmt(input.torque))} ${sanitize(lastResult.torqueUnit)}`],
+      ["Rotational Speed", input.rpm === null ? "Calculated" : `${sanitize(fmt(input.rpm, 1))} rpm`],
+      ["Efficiency", `${sanitize(fmt(input.efficiency, 2))}%`],
+      ["Unit System", input.system === "metric" ? "SI (Metric)" : "Imperial (US)"],
+      ["Power Unit", powerUnitLabels[input.powerUnit] || "kW"],
     ];
+
+    const primaryValue = safeNumber(lastResult.solved === "power" ? lastResult.displayPower :
+      lastResult.solved === "torque" ? lastResult.displayTorque :
+        lastResult.rpm);
+    const primaryUnit = lastResult.solved === "power" ? lastResult.powerUnit :
+      lastResult.solved === "torque" ? lastResult.torqueUnit :
+        "rpm";
+
     const results = [
-      ["Primary result", `${fmt(lastResult.solved === "power" ? lastResult.displayPower : lastResult.solved === "torque" ? lastResult.displayTorque : lastResult.rpm)} ${lastResult.solved === "power" ? lastResult.powerUnit : lastResult.solved === "torque" ? lastResult.torqueUnit : "rpm"}`],
-      ["Power", `${fmt(lastResult.displayPower)} ${lastResult.powerUnit}`],
-      ["Torque", `${fmt(lastResult.displayTorque)} ${lastResult.torqueUnit}`],
-      ["RPM", `${fmt(lastResult.rpm, 1)} rpm`],
-      ["Angular velocity", `${fmt(lastResult.angularVelocity)} rad/s`],
-      ["Mechanical power", `${fmt(lastResult.displayUsefulPower)} ${lastResult.powerUnit}`],
-      ["Power loss", `${fmt(lastResult.displayPowerLoss)} ${lastResult.powerUnit}`],
-      ["Efficiency", `${fmt(lastResult.efficiency, 2)}%`],
+      ["Primary Result", `${sanitize(fmt(primaryValue))} ${sanitize(primaryUnit)}`],
+      ["Power", `${sanitize(fmt(safeNumber(lastResult.displayPower)))} ${sanitize(lastResult.powerUnit)}`],
+      ["Torque", `${sanitize(fmt(safeNumber(lastResult.displayTorque)))} ${sanitize(lastResult.torqueUnit)}`],
+      ["RPM", `${sanitize(fmt(safeNumber(lastResult.rpm), 1))} rpm`],
+      ["Angular Velocity", `${sanitize(fmt(safeNumber(lastResult.angularVelocity)))} rad/s`],
+      ["Mechanical Power", `${sanitize(fmt(safeNumber(lastResult.displayUsefulPower)))} ${sanitize(lastResult.powerUnit)}`],
+      ["Power Loss", `${sanitize(fmt(safeNumber(lastResult.displayPowerLoss)))} ${sanitize(lastResult.powerUnit)}`],
+      ["Efficiency", `${sanitize(fmt(safeNumber(lastResult.efficiency), 2))}%`],
     ];
+
     const formulas = [
-      ["Power", "P = (2πNT)/60"],
-      ["Torque", "T = (60P)/(2πN)"],
-      ["RPM", "N = (60P)/(2πT)"],
+      ["Power", "P = (2 x pi x N x T) / 60"],
+      ["Torque", "T = (60 x P) / (2 x pi x N)"],
+      ["RPM", "N = (60 x P) / (2 x pi x T)"],
     ];
 
-    let y = 116;
-    const drawHeader = () => {
-      doc.setFillColor(5, 18, 35);
-      doc.rect(0, 0, width, 92, "F");
-      doc.setDrawColor(48, 187, 247);
-      doc.setLineWidth(2);
-      doc.circle(margin + 12, 29, 11);
-      doc.line(margin + 5, 29, margin + 19, 29);
-      doc.line(margin + 12, 22, margin + 12, 36);
-      doc.setFont("helvetica", "bold");
-      doc.setTextColor(255, 255, 255);
-      doc.setFontSize(12);
-      doc.text("AXION ENGINEERING SUITE", margin + 32, 33);
-      doc.setFontSize(19);
-      doc.text("Power & Torque Calculation Report", margin, 63);
+    const formulaUsed = lastResult.solved === "power" ? formulas[0][1] :
+      lastResult.solved === "torque" ? formulas[1][1] :
+        formulas[2][1];
+
+    // ===== PAGE 1 =====
+    let y = 100;
+
+    // Header
+    doc.setFillColor(5, 18, 35);
+    doc.rect(0, 0, pageWidth, 90, "F");
+    doc.setDrawColor(48, 187, 247);
+    doc.setLineWidth(2);
+    doc.circle(margin + 12, 35, 12);
+    doc.line(margin + 4, 35, margin + 20, 35);
+    doc.line(margin + 12, 27, margin + 12, 43);
+    doc.setFont("helvetica", "bold");
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(14);
+    doc.text("AXION ENGINEERING SUITE", margin + 32, 32);
+    doc.setFontSize(22);
+    doc.text("Power & Torque Calculation Report", margin, 62);
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(9);
+    doc.setTextColor(168, 190, 209);
+    doc.text(`Generated: ${generatedAt.toLocaleDateString()} at ${generatedAt.toLocaleTimeString()}`, margin, 78);
+    doc.text("Version 1.0", pageWidth - margin, 78, { align: "right" });
+
+    // Section: Input Parameters
+    y = 110;
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(10);
+    doc.setTextColor(24, 119, 194);
+    doc.text("INPUT PARAMETERS", margin, y);
+    y += 8;
+    doc.setDrawColor(48, 187, 247);
+    doc.setLineWidth(1.5);
+    doc.line(margin, y, safeNumber(pageWidth - margin), y);
+    y += 12;
+
+    // Input table
+    const rowHeight = 28;
+    inputs.forEach(([label, value], index) => {
+      const rowY = y;
+      doc.setFillColor(index % 2 ? [248, 250, 252] : [241, 246, 250]);
+      doc.rect(margin, rowY, safeNumber(contentWidth), rowHeight, "F");
       doc.setFont("helvetica", "normal");
-      doc.setFontSize(8.5);
-      doc.setTextColor(168, 190, 209);
-      doc.text(`Generated ${generatedAt.toLocaleDateString()} at ${generatedAt.toLocaleTimeString()}`, margin, 79);
-      doc.text("Version 1.0", width - margin, 79, { align: "right" });
-    };
-
-    const sectionTitle = (title) => {
-      doc.setFont("helvetica", "bold");
       doc.setFontSize(9);
-      doc.setTextColor(24, 119, 194);
-      doc.text(title.toUpperCase(), margin, y);
-      y += 10;
-      doc.setDrawColor(203, 218, 231);
-      doc.setLineWidth(0.6);
-      doc.line(margin, y, width - margin, y);
-      y += 13;
-    };
+      doc.setTextColor(58, 74, 91);
+      doc.text(label, margin + 10, rowY + 17);
+      doc.setFont("helvetica", "bold");
+      doc.setTextColor(10, 94, 162);
+      doc.text(String(value), safeNumber(pageWidth - margin - 10), rowY + 17, { align: "right" });
+      y += rowHeight;
+    });
 
-    const table = (rows, highlight = false) => {
-      rows.forEach(([label, value], index) => {
-        const rowY = y;
-        doc.setFillColor(...(highlight ? (index < 2 ? [226, 244, 255] : [246, 249, 252]) : (index % 2 ? [248, 250, 252] : [241, 246, 250])));
-        doc.roundedRect(margin, rowY, width - margin * 2, 25, 2, 2, "F");
-        doc.setFont("helvetica", "normal");
-        doc.setFontSize(9);
-        doc.setTextColor(58, 74, 91);
-        doc.text(label, margin + 10, rowY + 16);
-        doc.setFont("helvetica", highlight ? "bold" : "normal");
-        doc.setTextColor(...(highlight ? [10, 94, 162] : [20, 35, 50]));
-        doc.text(String(value), width - margin - 10, rowY + 16, { align: "right" });
-        y += 29;
-      });
-      y += 12;
-    };
+    // Section: Primary Result
+    y += 15;
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(10);
+    doc.setTextColor(24, 119, 194);
+    doc.text("PRIMARY RESULT", margin, y);
+    y += 8;
+    doc.setDrawColor(48, 187, 247);
+    doc.setLineWidth(1.5);
+    doc.line(margin, y, safeNumber(pageWidth - margin), y);
+    y += 12;
 
-    drawHeader();
-    sectionTitle("Input parameters");
-    table(inputs);
-    sectionTitle("Calculated results");
-    table(results, true);
+    // Primary result box
+    doc.setFillColor(226, 244, 255);
+    doc.roundedRect(margin, y, safeNumber(contentWidth), 40, 3, 3, "F");
+    doc.setDrawColor(48, 187, 247);
+    doc.setLineWidth(1);
+    doc.roundedRect(margin, y, safeNumber(contentWidth), 40, 3, 3, "S");
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(9);
+    doc.setTextColor(58, 74, 91);
+    doc.text(`${lastResult.solvedLabel}:`, margin + 15, y + 18);
+    doc.setFontSize(16);
+    doc.setTextColor(10, 94, 162);
+    doc.text(`${fmt(primaryValue)} ${primaryUnit}`, safeNumber(pageWidth - margin - 10), y + 25, { align: "right" });
+    y += 55;
+
+    // Section: Calculated Results
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(10);
+    doc.setTextColor(24, 119, 194);
+    doc.text("CALCULATED RESULTS", margin, y);
+    y += 8;
+    doc.setDrawColor(48, 187, 247);
+    doc.setLineWidth(1.5);
+    doc.line(margin, y, safeNumber(pageWidth - margin), y);
+    y += 12;
+
+    // Results table
+    results.forEach(([label, value], index) => {
+      const rowY = y;
+      doc.setFillColor(index % 2 ? [248, 250, 252] : [241, 246, 250]);
+      doc.rect(margin, rowY, safeNumber(contentWidth), rowHeight, "F");
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(9);
+      doc.setTextColor(58, 74, 91);
+      doc.text(label, margin + 10, rowY + 17);
+      doc.setFont("helvetica", "bold");
+      doc.setTextColor(20, 35, 50);
+      doc.text(String(value), safeNumber(pageWidth - margin - 10), rowY + 17, { align: "right" });
+      y += rowHeight;
+    });
+
+    // ===== PAGE 2 =====
     doc.addPage();
     y = 50;
-    sectionTitle("Engineering equations");
-    table(formulas.map(([label, equation]) => [label, equation]));
-    sectionTitle("Worked example");
-    table([
-      ["Given", `P = ${fmt(lastResult.powerW)} W; T = ${fmt(lastResult.torqueNm)} N m; N = ${fmt(lastResult.rpm, 1)} rpm`],
-      ["Formula used", formulas.find(([label]) => label === lastResult.solvedLabel)?.[1] || formulas[0][1]],
-      ["Final answer", `${lastResult.solvedLabel} = ${fmt(lastResult.solved === "power" ? lastResult.displayPower : lastResult.solved === "torque" ? lastResult.displayTorque : lastResult.rpm)} ${lastResult.solved === "power" ? lastResult.powerUnit : lastResult.solved === "torque" ? lastResult.torqueUnit : "rpm"}`],
-    ]);
-    sectionTitle("Engineering notes");
+
+    // Section: Engineering Equations
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(10);
+    doc.setTextColor(24, 119, 194);
+    doc.text("ENGINEERING EQUATIONS", margin, y);
+    y += 8;
+    doc.setDrawColor(48, 187, 247);
+    doc.setLineWidth(1.5);
+    doc.line(margin, y, safeNumber(pageWidth - margin), y);
+    y += 12;
+
+    formulas.forEach(([label, equation], index) => {
+      const rowY = y;
+      doc.setFillColor(index % 2 ? [248, 250, 252] : [241, 246, 250]);
+      doc.rect(margin, rowY, safeNumber(contentWidth), rowHeight, "F");
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(9);
+      doc.setTextColor(58, 74, 91);
+      doc.text(label, margin + 10, rowY + 17);
+      doc.setFont("helvetica", "bold");
+      doc.setTextColor(10, 94, 162);
+      doc.text(equation, safeNumber(pageWidth - margin - 10), rowY + 17, { align: "right" });
+      y += rowHeight;
+    });
+
+    // Section: Worked Example
+    y += 15;
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(10);
+    doc.setTextColor(24, 119, 194);
+    doc.text("WORKED EXAMPLE", margin, y);
+    y += 8;
+    doc.setDrawColor(48, 187, 247);
+    doc.setLineWidth(1.5);
+    doc.line(margin, y, safeNumber(pageWidth - margin), y);
+    y += 12;
+
+    const exampleData = [
+      ["Given", `P = ${sanitize(fmt(safeNumber(lastResult.powerW)))} W; T = ${sanitize(fmt(safeNumber(lastResult.torqueNm)))} N.m; N = ${sanitize(fmt(safeNumber(lastResult.rpm), 1))} rpm`],
+      ["Formula Used", formulaUsed],
+      ["Final Answer", `${lastResult.solvedLabel} = ${sanitize(fmt(primaryValue))} ${sanitize(primaryUnit)}`],
+    ];
+
+    exampleData.forEach(([label, value], index) => {
+      const rowY = y;
+      doc.setFillColor(index % 2 ? [248, 250, 252] : [241, 246, 250]);
+      doc.rect(margin, rowY, safeNumber(contentWidth), rowHeight, "F");
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(9);
+      doc.setTextColor(58, 74, 91);
+      doc.text(label, margin + 10, rowY + 17);
+      doc.setFont("helvetica", "bold");
+      doc.setTextColor(10, 94, 162);
+      const lines = doc.splitTextToSize(value, safeNumber(contentWidth - 150));
+      doc.text(lines, safeNumber(pageWidth - margin - 10), rowY + 17, { align: "right" });
+      y += rowHeight;
+    });
+
+    // Section: Engineering Assumptions
+    y += 15;
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(10);
+    doc.setTextColor(24, 119, 194);
+    doc.text("ENGINEERING ASSUMPTIONS", margin, y);
+    y += 8;
+    doc.setDrawColor(48, 187, 247);
+    doc.setLineWidth(1.5);
+    doc.line(margin, y, safeNumber(pageWidth - margin), y);
+    y += 12;
+
+    const assumptions = [
+      "Steady-state operating conditions",
+      "Ideal power transmission with no shock loads",
+      "Shaft material within elastic limit",
+      "Bearings properly lubricated and aligned",
+      "Ambient temperature within rated range",
+      "Power factor and efficiency as specified",
+    ];
+
+    assumptions.forEach((assumption, index) => {
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(9);
+      doc.setTextColor(77, 92, 108);
+      doc.text(`• ${assumption}`, margin + 10, y);
+      y += 14;
+    });
+
+    // Section: Engineering Notes
+    y += 10;
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(10);
+    doc.setTextColor(24, 119, 194);
+    doc.text("ENGINEERING NOTES", margin, y);
+    y += 8;
+    doc.setDrawColor(48, 187, 247);
+    doc.setLineWidth(1.5);
+    doc.line(margin, y, safeNumber(pageWidth - margin), y);
+    y += 12;
+
+    const notes = [
+      "Verify service factor, duty cycle, and thermal limits",
+      "Check shaft stress, coupling capacity, and bearing ratings",
+      "Confirm manufacturer specifications before implementation",
+      "Consider safety factors for critical applications",
+      "Account for dynamic loads and transient conditions",
+    ];
+
+    notes.forEach((note) => {
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(9);
+      doc.setTextColor(77, 92, 108);
+      const lines = doc.splitTextToSize(`• ${note}`, safeNumber(contentWidth - 20));
+      doc.text(lines, margin + 10, y);
+      y += 14;
+    });
+
+    // Section: Disclaimer
+    y += 10;
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(10);
+    doc.setTextColor(24, 119, 194);
+    doc.text("DISCLAIMER", margin, y);
+    y += 8;
+    doc.setDrawColor(48, 187, 247);
+    doc.setLineWidth(1.5);
+    doc.line(margin, y, safeNumber(pageWidth - margin), y);
+    y += 12;
+
     doc.setFont("helvetica", "normal");
     doc.setFontSize(8.5);
-    doc.setTextColor(77, 92, 108);
-    const disclaimer = "Results are provided for engineering estimation. Verify duty cycle, service factor, thermal limits, shaft stress, coupling capacity, bearing speed and manufacturer ratings before release.";
-    doc.text(doc.splitTextToSize(disclaimer, width - margin * 2), margin, y, { lineHeightFactor: 1.45 });
+    doc.setTextColor(104, 122, 139);
+    const disclaimer = "Results are provided for engineering estimation only. Verify duty cycle, service factor, thermal limits, shaft stress, coupling capacity, bearing speed ratings, and manufacturer specifications before implementation. This tool does not replace professional engineering judgment.";
+    const disclaimerLines = doc.splitTextToSize(disclaimer, safeNumber(contentWidth));
+    doc.text(disclaimerLines, margin, y);
 
+    // Footer on all pages
     const pages = doc.getNumberOfPages();
     for (let page = 1; page <= pages; page += 1) {
       doc.setPage(page);
       doc.setDrawColor(210, 221, 230);
-      doc.line(margin, height - 38, width - margin, height - 38);
+      doc.setLineWidth(0.5);
+      doc.line(margin, safeNumber(pageHeight - 40), safeNumber(pageWidth - margin), safeNumber(pageHeight - 40));
       doc.setFont("helvetica", "normal");
       doc.setFontSize(8);
       doc.setTextColor(104, 122, 139);
-      doc.text("Axion Engineering Suite", margin, height - 23);
-      doc.text(`Page ${page} of ${pages}`, width - margin, height - 23, { align: "right" });
+      doc.text("Axion Engineering Suite - Version 1.0", margin, safeNumber(pageHeight - 25));
+      doc.text(`Page ${page} of ${pages}`, safeNumber(pageWidth - margin), safeNumber(pageHeight - 25), { align: "right" });
     }
 
     const blob = doc.output("blob");
@@ -699,12 +804,7 @@ function reset() {
   $("power-unit-select").value = "kw";
   previousSystem = "metric";
   previousPowerUnit = "kw";
-  currentRpm = 0;
-  targetRpm = 0;
-  currentDirection = 1;
-  targetDirection = 1;
   run();
-  resetDrivetrainOrientation();
 }
 
 export function init() {
@@ -726,26 +826,6 @@ export function init() {
   $("export-csv").addEventListener("click", exportCsv);
   $("export-pdf").addEventListener("click", exportPdf);
 
-  prefersReducedMotion.addEventListener("change", () => {
-    if (prefersReducedMotion.matches) {
-      stopDrivetrainAnimation();
-    } else if (lastResult) {
-      updateDrivetrainAnimation(lastResult.rpm);
-    }
-  });
-  document.addEventListener("visibilitychange", () => {
-    if (document.hidden) {
-      stopDrivetrainAnimation();
-    } else if (lastResult && !prefersReducedMotion.matches) {
-      updateDrivetrainAnimation(lastResult.rpm);
-    }
-  });
-  window.addEventListener("pagehide", destroyPowerVisualization);
-
-  const svg = document.querySelector(".pt-machine");
-  if (svg) {
-    initPowerVisualization(svg);
-  }
   initFavourite();
   run();
 }
